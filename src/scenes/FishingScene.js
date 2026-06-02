@@ -170,9 +170,11 @@ export class FishingScene {
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Meter drains only when hook is outside the zone
+      // Meter fills in zone, drains outside
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-      if (!inZone) {
+      if (inZone) {
+        this.catchMeter = Math.min(1.0, this.catchMeter + dt * 0.28);
+      } else {
         this.catchMeter = Math.max(0, this.catchMeter - dt * this.meterDrain);
       }
 
