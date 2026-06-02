@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -359,6 +362,26 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="diag" style="position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#ff6b6b;font-size:13px;font-family:monospace;text-align:center;padding:24px;z-index:9999;white-space:pre-wrap;pointer-events:none;"></div>
+  <script>
+    (function() {
+      var diag = document.getElementById('diag');
+      diag.textContent = 'Loading...';
+      diag.style.color = '#888';
+      function showErr(msg) {
+        diag.style.color = '#ff6b6b';
+        diag.style.pointerEvents = 'auto';
+        diag.textContent = msg + '\n\nTap to reload';
+        diag.onclick = function() { location.reload(); };
+      }
+      window.addEventListener('error', function(e) {
+        showErr('ERROR: ' + e.message + '\n' + (e.filename || '').split('/').pop() + ':' + e.lineno);
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        showErr('MODULE ERROR:\n' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+      });
+    })();
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

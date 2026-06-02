@@ -113,8 +113,8 @@ function loop(timestamp) {
 
   gameTime.update(dt);
 
-  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene.draw(); }
-  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene.draw(); }
+  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
+  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
 
   hud.update();
   requestAnimationFrame(loop);
@@ -122,4 +122,5 @@ function loop(timestamp) {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 startWorld();
+document.getElementById('diag')?.remove();
 requestAnimationFrame(t => { lastTime = t; loop(t); });
