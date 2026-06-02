@@ -1,22 +1,39 @@
-// Surface any uncaught errors visually (helpful for mobile debugging)
+// Surface any uncaught errors visually — wraps text so full message is readable
 window.addEventListener('error', (e) => {
   const canvas = document.getElementById('game');
   if (!canvas) return;
-  if (!canvas.width || !canvas.height) {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
+  if (!canvas.width || !canvas.height) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
   const ctx = canvas.getContext('2d');
   const cw = canvas.width, ch = canvas.height;
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, cw, ch);
-  ctx.fillStyle = '#f55';
-  ctx.font = `bold ${Math.round(cw / 22)}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('Error: ' + e.message, cw / 2, ch / 2 - 20);
-  ctx.fillStyle = '#aaa';
-  ctx.font = `${Math.round(cw / 30)}px sans-serif`;
-  ctx.fillText((e.filename?.split('/').pop() ?? '') + ':' + e.lineno, cw / 2, ch / 2 + 14);
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, cw, ch);
+
+  const fs = Math.max(11, Math.min(14, Math.round(cw / 28)));
+  ctx.font = `bold ${fs}px monospace`;
+  ctx.textAlign = 'left';
+  const pad = 20, maxW = cw - pad * 2, lineH = fs * 1.6;
+
+  function wrapText(text, color) {
+    const words = text.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const t = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+    }
+    if (cur) lines.push(cur);
+    return lines.map(l => ({ text: l, color }));
+  }
+
+  const rows = [
+    ...wrapText('ERROR: ' + e.message, '#ff6b6b'),
+    { text: (e.filename?.split('/').pop() ?? '') + ':' + e.lineno, color: '#888' },
+    { text: 'Tap to reload', color: '#555' },
+  ];
+
+  const startY = Math.max(fs * 2, ch / 2 - (rows.length * lineH) / 2);
+  rows.forEach((row, i) => { ctx.fillStyle = row.color; ctx.fillText(row.text, pad, startY + i * lineH); });
+
+  canvas.onclick = () => location.reload();
 });
 
 import { GameTime }       from './systems/GameTime.js';
@@ -56,7 +73,7 @@ function startFishing(spot) {
   activeScene = 'fishing';
   worldScene?.destroy();
   worldScene = null;
-  fishingScene = new FishingScene(canvas, gameTime, selector, inventory, (result) => {
+  fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
     if (result) {
       // Show brief catch notification
       showCatchToast(result.fish, result.weight);

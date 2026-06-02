@@ -43,19 +43,27 @@ export class FishingScene {
   }
 
   start(spot) {
-    this.spot      = spot;
-    this.state     = 'cast';
-    this.castPower = 0;
-    this.castDir   = 1;
-    this.castLocked= false;
+    this.spot       = spot;
+    this.state      = 'cast';
+    this.castPower  = 0;
+    this.castDir    = 1;
+    this.castLocked = false;
     this._selectFish();
   }
 
   _selectFish() {
-    const { season, timeOfDay } = this.gameTime;
-    const loc = this.spot?.location ?? 'pond';
-    this.pendingFish   = this.selector.select(loc, season, timeOfDay);
-    this.pendingWeight = this.pendingFish ? this.selector.randomWeight(this.pendingFish) : 0;
+    try {
+      const season    = this.gameTime.season;
+      const timeOfDay = this.gameTime.timeOfDay;
+      const loc       = this.spot?.location ?? 'pond';
+      this.pendingFish   = this.selector.select(loc, season, timeOfDay);
+      this.pendingWeight = this.pendingFish ? this.selector.randomWeight(this.pendingFish) : 0;
+    } catch (err) {
+      // Defensive: if selector fails for any reason, log and continue with no fish
+      console.error('[FishingScene] _selectFish failed:', err);
+      this.pendingFish   = null;
+      this.pendingWeight = 0;
+    }
   }
 
   destroy() {
