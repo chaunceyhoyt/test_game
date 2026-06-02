@@ -1,3 +1,19 @@
+// Surface any uncaught errors visually (helpful for mobile debugging)
+window.addEventListener('error', (e) => {
+  const canvas = document.getElementById('game');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#f55';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Error: ' + e.message, canvas.width / 2, canvas.height / 2 - 20);
+  ctx.fillStyle = '#aaa';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(e.filename?.split('/').pop() + ':' + e.lineno, canvas.width / 2, canvas.height / 2 + 10);
+});
+
 import { GameTime }       from './systems/GameTime.js';
 import { FishDatabase }   from './systems/FishDatabase.js';
 import { Inventory }      from './systems/Inventory.js';

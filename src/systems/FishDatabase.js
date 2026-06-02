@@ -1,4 +1,4 @@
-import fishData from '../data/fish.json';
+import fishData from '../data/fish.js';
 
 export class FishDatabase {
   constructor() {

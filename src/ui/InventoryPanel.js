@@ -59,12 +59,18 @@ export class InventoryPanel {
     if (this.activeTab === 'equipment') el.innerHTML = this._renderEquipment();
     if (this.activeTab === 'dex')       el.innerHTML = this._renderDex();
 
-    // Sell buttons
+    // Sell individual
     el.querySelectorAll('.sell-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.inventory.sellFish(+btn.dataset.index);
         this._render();
       });
+    });
+
+    // Sell all
+    el.querySelector('#sell-all')?.addEventListener('click', () => {
+      while (this.inventory.caughtFish.length) this.inventory.sellFish(0);
+      this._render();
     });
   }
 
@@ -125,7 +131,6 @@ export class InventoryPanel {
         </div>`;
     });
 
-    html += '</div>';
     return html;
   }
 
