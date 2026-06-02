@@ -7,9 +7,24 @@ export class Inventory {
     this.maxFuel = 100;
     this.caughtFish = []; // { fishId, name, weight, value, caughtAt }
     this.fishLog = {};    // { [fishId]: { count, bestWeight } }
-    this.poles = [{ name: 'Old Rod', power: 1, action: 'slow' }];
+    this.poles = [
+      { id: 'old',    name: 'Old Rod',    power: 1, action: 'slow' },
+      { id: 'carbon', name: 'Carbon Rod', power: 3, action: 'fast' },
+    ];
     this.baits = [{ name: 'Worm', count: 20 }];
+    this.equippedPoleId = 'old';
     this.load();
+  }
+
+  equipPole(id) {
+    if (this.poles.find(p => p.id === id)) {
+      this.equippedPoleId = id;
+      this.save();
+    }
+  }
+
+  getEquippedPole() {
+    return this.poles.find(p => p.id === this.equippedPoleId) ?? this.poles[0];
   }
 
   addFish(fish, weight) {
@@ -34,7 +49,7 @@ export class Inventory {
     this.save();
   }
 
-  hasCaught(fishId) { return !!this.fishLog[fishId]; }
+  hasCaught(fishId)  { return !!this.fishLog[fishId]; }
   catchCount(fishId) { return this.fishLog[fishId]?.count ?? 0; }
   bestWeight(fishId) { return this.fishLog[fishId]?.bestWeight ?? 0; }
 
@@ -43,6 +58,7 @@ export class Inventory {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         money: this.money, fuel: this.fuel,
         caughtFish: this.caughtFish, fishLog: this.fishLog,
+        equippedPoleId: this.equippedPoleId,
       }));
     } catch {}
   }
@@ -51,10 +67,11 @@ export class Inventory {
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY));
       if (!d) return;
-      this.money = d.money ?? 100;
-      this.fuel  = d.fuel  ?? 50;
-      this.caughtFish = d.caughtFish ?? [];
-      this.fishLog    = d.fishLog    ?? {};
+      this.money         = d.money         ?? 100;
+      this.fuel          = d.fuel          ?? 50;
+      this.caughtFish    = d.caughtFish    ?? [];
+      this.fishLog       = d.fishLog       ?? {};
+      this.equippedPoleId = d.equippedPoleId ?? 'old';
     } catch {}
   }
 }

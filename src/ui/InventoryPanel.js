@@ -72,6 +72,14 @@ export class InventoryPanel {
       while (this.inventory.caughtFish.length) this.inventory.sellFish(0);
       this._render();
     });
+
+    // Equip pole
+    el.querySelectorAll('.equip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.inventory.equipPole(btn.dataset.pole);
+        this._render();
+      });
+    });
   }
 
   _rarityColor(r) {
@@ -135,13 +143,25 @@ export class InventoryPanel {
   }
 
   _renderEquipment() {
-    const poles = this.inventory.poles;
-    const baits = this.inventory.baits;
+    const poles      = this.inventory.poles;
+    const baits      = this.inventory.baits;
+    const equippedId = this.inventory.equippedPoleId;
     let html = `<div class="equip-section"><div class="equip-header">🎣 Fishing Poles</div>`;
     for (const p of poles) {
-      html += `<div class="equip-card"><span class="equip-icon">🎣</span>
-        <div class="equip-info"><div class="equip-name">${p.name}</div>
-        <div class="equip-stat">Power: ${p.power} · ${p.action}</div></div></div>`;
+      const isEquipped = p.id === equippedId;
+      html += `<div class="equip-card">
+        <span class="equip-icon">🎣</span>
+        <div class="equip-info">
+          <div class="equip-name">${p.name}</div>
+          <div class="equip-stat">Power: ${p.power} · ${p.action}</div>
+        </div>
+        <div class="equip-actions">
+          ${isEquipped
+            ? `<span class="equip-badge">Equipped</span>`
+            : `<button class="equip-btn" data-pole="${p.id}">Equip</button>`
+          }
+        </div>
+      </div>`;
     }
     html += `</div><div class="equip-section"><div class="equip-header">🪱 Bait</div>`;
     for (const b of baits) {
