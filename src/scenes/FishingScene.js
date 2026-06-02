@@ -106,8 +106,8 @@ export class FishingScene {
 
   _beginReel() {
     this.state      = 'reel';
-    this.reelPos    = 0.5;
-    this.catchMeter = 0;
+    this.reelPos    = 0.15;  // start near left — player reels right toward win
+    this.catchMeter = 1.0;   // starts full, drains when hook outside zone
     this.zoneDir    = 1;
 
     const rarity    = this.pendingFish?.rarity ?? 'common';
@@ -123,6 +123,10 @@ export class FishingScene {
 
     this.zoneMin = 0.5 - win / 2;
     this.zoneMax = 0.5 + win / 2;
+
+    // Drain rate when outside zone: rarer fish drain faster
+    const rarityDrain = { common: 0.15, uncommon: 0.20, rare: 0.28, epic: 0.38, legendary: 0.50 };
+    this.meterDrain = rarityDrain[rarity] ?? 0.20;
   }
 
   _finishReel(caught) {
@@ -162,17 +166,18 @@ export class FishingScene {
       this.zoneMax += dt * this.zoneDir * this.zoneSpeed;
       if (this.zoneMax >= 0.92 || this.zoneMin <= 0.08) this.zoneDir *= -1;
 
-      // Hook: hold = reel up, release = fish pulls back
-      const target = this.reelHeld ? this.reelPos + dt * 0.45 : this.reelPos - dt * 0.3;
+      // Hook: hold = reel right toward win, release = fish pulls back left
+      const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Catch meter
+      // Meter drains only when hook is outside the zone
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-      this.catchMeter += inZone ? dt * 0.28 : -dt * 0.22;
-      this.catchMeter  = Math.max(0, Math.min(1, this.catchMeter));
+      if (!inZone) {
+        this.catchMeter = Math.max(0, this.catchMeter - dt * this.meterDrain);
+      }
 
-      if (this.catchMeter >= 1)                          this._finishReel(true);
-      if (this.catchMeter <= 0 && this.reelPos <= 0.01) this._finishReel(false);
+      if (this.reelPos  >= 0.95) this._finishReel(true);   // reeled in!
+      if (this.catchMeter <= 0)  this._finishReel(false);  // meter emptied = escaped
       return;
     }
 
@@ -367,13 +372,19 @@ export class FishingScene {
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     this._roundRect(mx, my, mw, mh, 7); ctx.fill();
 
-    const meterColor = this.catchMeter > 0.7 ? '#4CAF50' : this.catchMeter > 0.4 ? '#FFC107' : '#EF5350';
+    // Meter starts full and drains — color goes green → yellow → red
+    const meterColor = this.catchMeter > 0.6 ? '#4CAF50' : this.catchMeter > 0.3 ? '#FFC107' : '#EF5350';
     ctx.fillStyle = meterColor;
     this._roundRect(mx, my, mw * this.catchMeter, mh, 7); ctx.fill();
 
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = '11px sans-serif';
-    ctx.fillText('CATCH METER', cx, my - 6);
+    ctx.fillText('LINE TENSION', cx, my - 6);
+
+    // Win marker at right edge of reel bar
+    ctx.fillStyle = '#FFEB3B';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('🏁', bx + bw, by - 6);
 
     this._drawFishSilhouette(cx, py + ph * 0.78, 70, 35, rc, true);
   }
