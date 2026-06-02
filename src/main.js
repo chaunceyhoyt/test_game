@@ -1,87 +1,87 @@
+import { GameTime }       from './systems/GameTime.js';
+import { FishDatabase }   from './systems/FishDatabase.js';
+import { Inventory }      from './systems/Inventory.js';
+import { FishSelector }   from './systems/FishSelector.js';
+import { WorldScene }     from './scenes/WorldScene.js';
+import { FishingScene }   from './scenes/FishingScene.js';
+import { HUD }            from './ui/HUD.js';
+import { InventoryPanel } from './ui/InventoryPanel.js';
+
+// ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
-// --- Input ---
-const input = {
-  touches: [],
-  tapped: false,
-};
+const gameTime  = new GameTime();
+const fishDb    = new FishDatabase();
+const inventory = new Inventory();
+const selector  = new FishSelector(fishDb);
 
-canvas.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  input.touches = Array.from(e.touches).map((t) => ({
-    x: t.clientX,
-    y: t.clientY,
-  }));
-  input.tapped = true;
-}, { passive: false });
+// ── UI ───────────────────────────────────────────────────────────────────────
+const hud   = new HUD(inventory, gameTime, () => invPanel.toggle());
+const invPanel = new InventoryPanel(inventory, fishDb);
 
-canvas.addEventListener('touchend', () => {
-  input.touches = [];
-});
+// ── Scenes ───────────────────────────────────────────────────────────────────
+let activeScene = 'world';
+let worldScene, fishingScene;
 
-// --- Resize ---
+function startWorld() {
+  fishingScene?.destroy();
+  fishingScene = null;
+  activeScene = 'world';
+  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot));
+}
+
+function startFishing(spot) {
+  activeScene = 'fishing';
+  worldScene?.destroy();
+  worldScene = null;
+  fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
+    if (result) {
+      // Show brief catch notification
+      showCatchToast(result.fish, result.weight);
+    }
+    startWorld();
+  });
+  fishingScene.start(spot);
+}
+
+// ── Catch toast ──────────────────────────────────────────────────────────────
+function showCatchToast(fish, weight) {
+  const rarityColors = { common:'#9E9E9E', uncommon:'#4CAF50', rare:'#2196F3', epic:'#9C27B0', legendary:'#FF9800' };
+  const rc = rarityColors[fish.rarity] ?? '#9E9E9E';
+  const toast = document.createElement('div');
+  toast.className = 'catch-toast';
+  toast.style.borderColor = rc;
+  toast.innerHTML = `<strong style="color:${rc}">${fish.name}</strong> added to bag! (${weight} lbs)`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 2500);
+}
+
+// ── Resize ───────────────────────────────────────────────────────────────────
 function resize() {
-  canvas.width = window.innerWidth;
+  canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
+  worldScene?.onResize();
 }
 window.addEventListener('resize', resize);
 resize();
 
-// --- Game state (replace with your own) ---
-const player = { x: 0, y: 0, r: 30, color: '#4af' };
-
-// --- Game loop ---
+// ── Game loop ────────────────────────────────────────────────────────────────
 let lastTime = 0;
-
-function update(dt) {
-  // Move player to last tap position
-  if (input.tapped && input.touches.length > 0) {
-    player.x = input.touches[0].x;
-    player.y = input.touches[0].y;
-    input.tapped = false;
-  }
-  // Clamp to canvas
-  player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
-  player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Background
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Player circle
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-  ctx.fillStyle = player.color;
-  ctx.fill();
-
-  // Labels
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.font = 'bold 48px sans-serif';
-  ctx.fillText('test', canvas.width / 2, canvas.height / 2 - 80);
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.font = '16px sans-serif';
-  ctx.fillText('Tap to move', canvas.width / 2, canvas.height - 24);
-}
-
 function loop(timestamp) {
-  const dt = Math.min((timestamp - lastTime) / 1000, 0.1); // cap at 100ms
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
   lastTime = timestamp;
-  update(dt);
-  draw();
+
+  gameTime.update(dt);
+
+  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene.draw(); }
+  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene.draw(); }
+
+  hud.update();
   requestAnimationFrame(loop);
 }
 
-// Start player in center
-player.x = window.innerWidth / 2;
-player.y = window.innerHeight / 2;
-
-requestAnimationFrame((t) => {
-  lastTime = t;
-  loop(t);
-});
+// ── Start ────────────────────────────────────────────────────────────────────
+startWorld();
+requestAnimationFrame(t => { lastTime = t; loop(t); });

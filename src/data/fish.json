@@ -1,0 +1,144 @@
+{
+  "fish": [
+    {
+      "id": 1, "name": "Bluegill", "rarity": "common",
+      "minWeight": 0.2, "maxWeight": 1.5, "value": 5,
+      "locations": ["pond", "lake"], "seasons": ["spring", "summer", "fall"],
+      "timeOfDay": ["morning", "afternoon", "evening"],
+      "color": "#5B9BD5", "description": "A scrappy panfish with a bright blue gill cover."
+    },
+    {
+      "id": 2, "name": "Catfish", "rarity": "common",
+      "minWeight": 1.0, "maxWeight": 8.0, "value": 8,
+      "locations": ["river", "lake"], "seasons": ["summer", "fall"],
+      "timeOfDay": ["evening", "night"],
+      "color": "#8B7355", "description": "A whiskered bottom-dweller that bites best after dark."
+    },
+    {
+      "id": 3, "name": "Yellow Perch", "rarity": "common",
+      "minWeight": 0.3, "maxWeight": 2.0, "value": 6,
+      "locations": ["lake"], "seasons": ["spring", "summer", "fall", "winter"],
+      "timeOfDay": ["morning", "afternoon", "evening"],
+      "color": "#FFD700", "description": "A striped schooling fish found in lakes year-round."
+    },
+    {
+      "id": 4, "name": "Crappie", "rarity": "common",
+      "minWeight": 0.4, "maxWeight": 2.5, "value": 7,
+      "locations": ["pond", "lake"], "seasons": ["spring", "fall"],
+      "timeOfDay": ["morning", "evening"],
+      "color": "#C0C0C0", "description": "Delicious and abundant near submerged structure."
+    },
+    {
+      "id": 5, "name": "Largemouth Bass", "rarity": "common",
+      "minWeight": 1.5, "maxWeight": 8.0, "value": 12,
+      "locations": ["lake", "pond"], "seasons": ["summer"],
+      "timeOfDay": ["morning", "evening"],
+      "color": "#5F8A4A", "description": "The most popular game fish in North America."
+    },
+    {
+      "id": 6, "name": "Common Carp", "rarity": "common",
+      "minWeight": 3.0, "maxWeight": 20.0, "value": 4,
+      "locations": ["river", "lake"], "seasons": ["spring", "summer"],
+      "timeOfDay": ["afternoon"],
+      "color": "#C8A46E", "description": "A large powerful fish that puts up a great fight."
+    },
+    {
+      "id": 7, "name": "Pumpkinseed", "rarity": "common",
+      "minWeight": 0.1, "maxWeight": 0.8, "value": 3,
+      "locations": ["pond"], "seasons": ["summer"],
+      "timeOfDay": ["afternoon"],
+      "color": "#FF8C00", "description": "A colorful sunfish with vivid orange spots."
+    },
+    {
+      "id": 8, "name": "Brook Trout", "rarity": "common",
+      "minWeight": 0.3, "maxWeight": 2.5, "value": 15,
+      "locations": ["river"], "seasons": ["spring", "fall"],
+      "timeOfDay": ["morning"],
+      "color": "#7B8B6F", "description": "A native trout that needs cold, clean mountain water."
+    },
+    {
+      "id": 9, "name": "Striped Bass", "rarity": "uncommon",
+      "minWeight": 2.0, "maxWeight": 15.0, "value": 25,
+      "locations": ["lake", "river", "ocean"], "seasons": ["spring"],
+      "timeOfDay": ["morning"],
+      "color": "#708090", "description": "A powerful migratory fish that runs rivers in spring."
+    },
+    {
+      "id": 10, "name": "Walleye", "rarity": "uncommon",
+      "minWeight": 1.5, "maxWeight": 10.0, "value": 30,
+      "locations": ["lake"], "seasons": ["spring", "fall"],
+      "timeOfDay": ["evening", "night"],
+      "color": "#BDB76B", "description": "Excellent table fare with glassy, reflective eyes."
+    },
+    {
+      "id": 11, "name": "Northern Pike", "rarity": "uncommon",
+      "minWeight": 2.0, "maxWeight": 18.0, "value": 20,
+      "locations": ["lake", "river"], "seasons": ["spring", "fall"],
+      "timeOfDay": ["morning"],
+      "color": "#556B2F", "description": "A torpedo-shaped ambush predator with sharp teeth."
+    },
+    {
+      "id": 12, "name": "Channel Catfish", "rarity": "uncommon",
+      "minWeight": 2.0, "maxWeight": 20.0, "value": 18,
+      "locations": ["river"], "seasons": ["summer"],
+      "timeOfDay": ["night"],
+      "color": "#696969", "description": "The most popular catfish species, found in rivers."
+    },
+    {
+      "id": 13, "name": "Coho Salmon", "rarity": "uncommon",
+      "minWeight": 4.0, "maxWeight": 15.0, "value": 45,
+      "locations": ["river", "ocean"], "seasons": ["fall"],
+      "timeOfDay": ["morning"],
+      "color": "#CD5C5C", "description": "A prized salmon that runs inland in fall."
+    },
+    {
+      "id": 14, "name": "Muskie", "rarity": "rare",
+      "minWeight": 5.0, "maxWeight": 35.0, "value": 75,
+      "locations": ["lake"], "seasons": ["summer"],
+      "timeOfDay": ["morning"],
+      "color": "#2E8B57", "description": "The fish of ten thousand casts. Worth every one."
+    },
+    {
+      "id": 15, "name": "King Salmon", "rarity": "rare",
+      "minWeight": 10.0, "maxWeight": 50.0, "value": 100,
+      "locations": ["ocean", "river"], "seasons": ["fall"],
+      "timeOfDay": ["morning"],
+      "color": "#B22222", "description": "The largest Pacific salmon — a true trophy fish."
+    },
+    {
+      "id": 16, "name": "Lake Sturgeon", "rarity": "rare",
+      "minWeight": 20.0, "maxWeight": 100.0, "value": 150,
+      "locations": ["river", "deep"], "seasons": ["spring"],
+      "timeOfDay": ["night"],
+      "color": "#4A4A4A", "description": "A prehistoric fish that can live over 150 years."
+    },
+    {
+      "id": 17, "name": "Snook", "rarity": "rare",
+      "minWeight": 2.0, "maxWeight": 15.0, "value": 80,
+      "locations": ["ocean"], "seasons": ["summer"],
+      "timeOfDay": ["evening"],
+      "color": "#DAA520", "description": "A prized inshore saltwater game fish of the tropics."
+    },
+    {
+      "id": 18, "name": "Tarpon", "rarity": "epic",
+      "minWeight": 50.0, "maxWeight": 200.0, "value": 300,
+      "locations": ["ocean"], "seasons": ["summer"],
+      "timeOfDay": ["morning"],
+      "color": "#C0C0C0", "description": "The Silver King. An explosive jumper that tests your skill."
+    },
+    {
+      "id": 19, "name": "Blue Marlin", "rarity": "epic",
+      "minWeight": 100.0, "maxWeight": 500.0, "value": 500,
+      "locations": ["deep"], "seasons": ["summer"],
+      "timeOfDay": ["afternoon"],
+      "color": "#191970", "description": "The ultimate offshore trophy. A true bucket-list catch."
+    },
+    {
+      "id": 20, "name": "Oarfish", "rarity": "legendary",
+      "minWeight": 50.0, "maxWeight": 300.0, "value": 1000,
+      "locations": ["deep"], "seasons": ["spring", "summer", "fall", "winter"],
+      "timeOfDay": ["night"],
+      "color": "#FF4500", "description": "A mysterious serpentine fish from the deep. Few have seen one alive."
+    }
+  ]
+}
