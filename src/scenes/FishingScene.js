@@ -37,6 +37,7 @@ export class FishingScene {
     this.qteBoostTotal  = 2.0;
     this.qteBoostResult = null; // null | 'perfect' | 'good' | 'miss'
     this.qteBoostFlash  = 0;
+    this.qteCount       = 0;   // increments each boost QTE, shrinks zone
 
     this.pendingFish   = null;
     this.pendingWeight = 0;
@@ -133,21 +134,50 @@ export class FishingScene {
     this.secondaryMeter = 0.5;
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
+    this.qteCount       = 0;
 
-    const rarity    = this.pendingFish?.rarity ?? 'common';
-    const polePower = this.inventory.getEquippedPole().power;
+    const rarity = this.pendingFish?.rarity ?? 'common';
 
-    const raritySpeed  = { common: 0.18, uncommon: 0.25, rare: 0.32, epic: 0.42, legendary: 0.55 };
+    const raritySpeed = { common: 0.18, uncommon: 0.25, rare: 0.32, epic: 0.42, legendary: 0.55 };
     this.zoneSpeed = raritySpeed[rarity] ?? 0.22;
 
-    const rarityWindow = { common: 0.30, uncommon: 0.26, rare: 0.22, epic: 0.18, legendary: 0.14 };
-    const win = Math.min(0.48, (rarityWindow[rarity] ?? 0.28) + (polePower - 1) * 0.03);
-    this.zoneMin = 0.5 - win / 2;
-    this.zoneMax = 0.5 + win / 2;
-
     const rarityDrain = { common: 0.15, uncommon: 0.20, rare: 0.28, epic: 0.38, legendary: 0.50 };
-    this.meterDrain = rarityDrain[rarity] ?? 0.20;
+    this.meterDrain   = rarityDrain[rarity] ?? 0.20;
     this.primaryDrain = 0.02;
+
+    // Set initial zone around center
+    this.zoneMin = 0.35;
+    this.zoneMax = 0.65;
+    this._applyZoneWindow();
+  }
+
+  // Recalculates zone width from rarity + pole power + fish weight + QTE count.
+  // Keeps the zone centered on its current midpoint so oscillation isn't disrupted.
+  _applyZoneWindow() {
+    const rarity    = this.pendingFish?.rarity ?? 'common';
+    const polePower = this.inventory.getEquippedPole().power;
+    const fish      = this.pendingFish;
+
+    const rarityWindow = { common: 0.30, uncommon: 0.26, rare: 0.22, epic: 0.18, legendary: 0.14 };
+    let win = rarityWindow[rarity] ?? 0.28;
+
+    // Stronger pole = bigger window
+    win += (polePower - 1) * 0.03;
+
+    // Heavier fish (relative to its range) = smaller window
+    if (fish && fish.maxWeight > fish.minWeight) {
+      const weightNorm = (this.pendingWeight - fish.minWeight) / (fish.maxWeight - fish.minWeight);
+      win -= weightNorm * 0.08;
+    }
+
+    // Each QTE narrows the window — fish tires but fights smarter
+    win -= this.qteCount * 0.015;
+
+    win = Math.max(0.08, Math.min(0.48, win));
+
+    const center  = (this.zoneMin + this.zoneMax) / 2;
+    this.zoneMin  = Math.max(0.05, center - win / 2);
+    this.zoneMax  = Math.min(0.95, center + win / 2);
   }
 
   _beginQteBoost() {
@@ -164,6 +194,10 @@ export class FishingScene {
     if      (result === 'perfect') this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
     else if (result === 'good')    this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
     else                           this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
+
+    // Each boost QTE shrinks the zone window
+    this.qteCount++;
+    this._applyZoneWindow();
   }
 
   _finishReel(caught) {
@@ -290,11 +324,11 @@ export class FishingScene {
       }
     }
 
-    // Panel
+    // Panel — ends 88px from bottom to clear the nav bar
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
     const py = ch * 0.33;
-    const ph = ch * 0.58;
+    const ph = ch - py - 88;
     this._drawPanel(px, py, pw, ph);
 
     if (this.state === 'waiting')   this._drawWaiting(px, py, pw, ph);
