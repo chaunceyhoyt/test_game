@@ -158,22 +158,23 @@ export class FishingScene {
     const polePower = this.inventory.getEquippedPole().power;
     const fish      = this.pendingFish;
 
-    const rarityWindow = { common: 0.30, uncommon: 0.26, rare: 0.22, epic: 0.18, legendary: 0.14 };
-    let win = rarityWindow[rarity] ?? 0.28;
+    // Base window by rarity (common is wide, legendary is tight)
+    const rarityWindow = { common: 0.36, uncommon: 0.30, rare: 0.24, epic: 0.18, legendary: 0.12 };
+    let win = rarityWindow[rarity] ?? 0.30;
 
-    // Stronger pole = bigger window
-    win += (polePower - 1) * 0.03;
+    // Stronger pole = noticeably bigger window (+5% per power point above 1)
+    win += (polePower - 1) * 0.05;
 
-    // Heavier fish (relative to its range) = smaller window
+    // Heavier fish relative to its range = smaller window (up to -10%)
     if (fish && fish.maxWeight > fish.minWeight) {
       const weightNorm = (this.pendingWeight - fish.minWeight) / (fish.maxWeight - fish.minWeight);
-      win -= weightNorm * 0.08;
+      win -= weightNorm * 0.10;
     }
 
-    // Each QTE narrows the window — fish tires but fights smarter
-    win -= this.qteCount * 0.015;
+    // Each boost QTE narrows the window — fish fights smarter as it tires
+    win -= this.qteCount * 0.025;
 
-    win = Math.max(0.08, Math.min(0.48, win));
+    win = Math.max(0.07, Math.min(0.52, win));
 
     const center  = (this.zoneMin + this.zoneMax) / 2;
     this.zoneMin  = Math.max(0.05, center - win / 2);
@@ -324,11 +325,11 @@ export class FishingScene {
       }
     }
 
-    // Panel — ends 88px from bottom to clear the nav bar
+    // Panel — 114px bottom clearance covers 72px nav + 34px iPhone safe area + buffer
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
     const py = ch * 0.33;
-    const ph = ch - py - 88;
+    const ph = ch - py - 114;
     this._drawPanel(px, py, pw, ph);
 
     if (this.state === 'waiting')   this._drawWaiting(px, py, pw, ph);
