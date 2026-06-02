@@ -13,14 +13,15 @@ export class WorldScene {
     this._initSpots();
     this._initPlayer();
 
-    this._handleTap = this._handleTap.bind(this);
-    canvas.addEventListener('click', this._handleTap);
-    canvas.addEventListener('touchstart', (e) => {
+    this._handleTap   = this._handleTap.bind(this);
+    this._handleTouch = (e) => {
       e.preventDefault();
       const r = canvas.getBoundingClientRect();
       const t = e.touches[0];
-      this._handleTap({ clientX: t.clientX, clientY: t.clientY, _touch: true, preventDefault: () => {} }, r);
-    }, { passive: false });
+      this._handleTap({ clientX: t.clientX, clientY: t.clientY }, r);
+    };
+    canvas.addEventListener('click',      this._handleTap);
+    canvas.addEventListener('touchstart', this._handleTouch, { passive: false });
   }
 
   _initSpots() {
@@ -63,7 +64,8 @@ export class WorldScene {
   }
 
   destroy() {
-    this.canvas.removeEventListener('click', this._handleTap);
+    this.canvas.removeEventListener('click',      this._handleTap);
+    this.canvas.removeEventListener('touchstart', this._handleTouch);
   }
 
   _handleTap(e, preRect) {

@@ -2,16 +2,21 @@
 window.addEventListener('error', (e) => {
   const canvas = document.getElementById('game');
   if (!canvas) return;
+  if (!canvas.width || !canvas.height) {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
   const ctx = canvas.getContext('2d');
+  const cw = canvas.width, ch = canvas.height;
   ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, cw, ch);
   ctx.fillStyle = '#f55';
-  ctx.font = 'bold 16px sans-serif';
+  ctx.font = `bold ${Math.round(cw / 22)}px sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('Error: ' + e.message, canvas.width / 2, canvas.height / 2 - 20);
+  ctx.fillText('Error: ' + e.message, cw / 2, ch / 2 - 20);
   ctx.fillStyle = '#aaa';
-  ctx.font = '12px sans-serif';
-  ctx.fillText(e.filename?.split('/').pop() + ':' + e.lineno, canvas.width / 2, canvas.height / 2 + 10);
+  ctx.font = `${Math.round(cw / 30)}px sans-serif`;
+  ctx.fillText((e.filename?.split('/').pop() ?? '') + ':' + e.lineno, cw / 2, ch / 2 + 14);
 });
 
 import { GameTime }       from './systems/GameTime.js';
@@ -51,7 +56,7 @@ function startFishing(spot) {
   activeScene = 'fishing';
   worldScene?.destroy();
   worldScene = null;
-  fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
+  fishingScene = new FishingScene(canvas, gameTime, selector, inventory, (result) => {
     if (result) {
       // Show brief catch notification
       showCatchToast(result.fish, result.weight);
