@@ -1,4 +1,4 @@
-// States: waiting → qte → reel → result
+// States: waiting → qte_hook → reel ↔ qte_boost (loop) → result
 export class FishingScene {
   constructor(canvas, selector, inventory, gameTime, onDone) {
     this.canvas    = canvas;
@@ -12,24 +12,38 @@ export class FishingScene {
     this.waitTimer = 0;
     this.waitMax   = 0;
 
+    // QTE hook (initial)
     this.qteTimer     = 0;
     this.qteTotalTime = 0;
 
-    this.reelPos     = 0.5;
-    this.zoneMin     = 0.35;
-    this.zoneMax     = 0.65;
-    this.zoneDir     = 1;
-    this.zoneSpeed   = 0.22;
-    this.catchMeter  = 0;
-    this.reelHeld    = false;
+    // Reel bar
+    this.reelPos   = 0.15;
+    this.zoneMin   = 0.35;
+    this.zoneMax   = 0.65;
+    this.zoneDir   = 1;
+    this.zoneSpeed = 0.22;
+    this.reelHeld  = false;
+
+    // Secondary meter (Line Tension) — fills in zone, drains out
+    this.secondaryMeter = 0.5;
+    this.meterDrain     = 0.20;
+
+    // Primary meter (Catch Progress) — only moves from boost QTEs + passive drain
+    this.primaryMeter = 0;
+    this.primaryDrain = 0.02;
+
+    // Boost QTE (precision ring)
+    this.qteBoostTimer  = 0;
+    this.qteBoostTotal  = 2.0;
+    this.qteBoostResult = null; // null | 'perfect' | 'good' | 'miss'
+    this.qteBoostFlash  = 0;
 
     this.pendingFish   = null;
     this.pendingWeight = 0;
-
-    this.resultFish   = null;
-    this.resultWeight = 0;
-    this.resultTimer  = 0;
-    this.escaped      = false;
+    this.resultFish    = null;
+    this.resultWeight  = 0;
+    this.resultTimer   = 0;
+    this.escaped       = false;
 
     this.t    = 0;
     this.spot = null;
@@ -69,12 +83,21 @@ export class FishingScene {
     this.canvas.removeEventListener('touchend',   this._onPointerUp);
   }
 
+  // ── Input ──────────────────────────────────────────────────────────────────
+
   _onPointerDown(e) {
     e.preventDefault();
     this.reelHeld = true;
 
-    if (this.state === 'qte') {
+    if (this.state === 'qte_hook') {
       this._beginReel();
+      return;
+    }
+
+    if (this.state === 'qte_boost' && this.qteBoostResult === null) {
+      const outerRadius = 85 * (1 - this.qteBoostTimer / this.qteBoostTotal);
+      const diff        = Math.abs(outerRadius - 38);
+      this._applyQteBoost(diff < 8 ? 'perfect' : 'good');
       return;
     }
 
@@ -85,9 +108,9 @@ export class FishingScene {
     }
   }
 
-  _onPointerUp() {
-    this.reelHeld = false;
-  }
+  _onPointerUp() { this.reelHeld = false; }
+
+  // ── State transitions ──────────────────────────────────────────────────────
 
   _beginWait() {
     this.state     = 'waiting';
@@ -95,8 +118,8 @@ export class FishingScene {
     this.waitTimer = 0;
   }
 
-  _beginQTE() {
-    this.state = 'qte';
+  _beginQteHook() {
+    this.state = 'qte_hook';
     const rarityBaseTime = { common: 3.0, uncommon: 2.2, rare: 1.5, epic: 1.0, legendary: 0.6 };
     const base      = rarityBaseTime[this.pendingFish?.rarity ?? 'common'] ?? 2.0;
     const polePower = this.inventory.getEquippedPole().power;
@@ -105,28 +128,42 @@ export class FishingScene {
   }
 
   _beginReel() {
-    this.state      = 'reel';
-    this.reelPos    = 0.15;  // start near left — player reels right toward win
-    this.catchMeter = 1.0;   // starts full, drains when hook outside zone
-    this.zoneDir    = 1;
+    this.state          = 'reel';
+    this.reelPos        = 0.15;
+    this.secondaryMeter = 0.5;
+    this.primaryMeter   = 0;
+    this.zoneDir        = 1;
 
     const rarity    = this.pendingFish?.rarity ?? 'common';
     const polePower = this.inventory.getEquippedPole().power;
 
-    // Zone speed: rarer fish fight harder
-    const raritySpeed = { common: 0.18, uncommon: 0.25, rare: 0.32, epic: 0.42, legendary: 0.55 };
+    const raritySpeed  = { common: 0.18, uncommon: 0.25, rare: 0.32, epic: 0.42, legendary: 0.55 };
     this.zoneSpeed = raritySpeed[rarity] ?? 0.22;
 
-    // Window size: rarer = smaller, higher pole power = larger
     const rarityWindow = { common: 0.30, uncommon: 0.26, rare: 0.22, epic: 0.18, legendary: 0.14 };
     const win = Math.min(0.48, (rarityWindow[rarity] ?? 0.28) + (polePower - 1) * 0.03);
-
     this.zoneMin = 0.5 - win / 2;
     this.zoneMax = 0.5 + win / 2;
 
-    // Drain rate when outside zone: rarer fish drain faster
     const rarityDrain = { common: 0.15, uncommon: 0.20, rare: 0.28, epic: 0.38, legendary: 0.50 };
     this.meterDrain = rarityDrain[rarity] ?? 0.20;
+    this.primaryDrain = 0.02;
+  }
+
+  _beginQteBoost() {
+    this.state          = 'qte_boost';
+    this.qteBoostTimer  = 0;
+    this.qteBoostResult = null;
+  }
+
+  _applyQteBoost(result) {
+    this.qteBoostResult = result;
+    this.qteBoostFlash  = 0.9;
+    this.secondaryMeter = 0.30;
+
+    if      (result === 'perfect') this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
+    else if (result === 'good')    this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
+    else                           this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
   }
 
   _finishReel(caught) {
@@ -142,21 +179,20 @@ export class FishingScene {
     }
   }
 
+  // ── Update ─────────────────────────────────────────────────────────────────
+
   update(dt) {
     this.t += dt;
 
     if (this.state === 'waiting') {
       this.waitTimer += dt;
-      if (this.waitTimer >= this.waitMax) this._beginQTE();
+      if (this.waitTimer >= this.waitMax) this._beginQteHook();
       return;
     }
 
-    if (this.state === 'qte') {
+    if (this.state === 'qte_hook') {
       this.qteTimer -= dt;
-      if (this.qteTimer <= 0) {
-        // Fish got away — short wait then try again
-        this._beginWait();
-      }
+      if (this.qteTimer <= 0) this._beginWait(); // missed — try again
       return;
     }
 
@@ -166,20 +202,39 @@ export class FishingScene {
       this.zoneMax += dt * this.zoneDir * this.zoneSpeed;
       if (this.zoneMax >= 0.92 || this.zoneMin <= 0.08) this.zoneDir *= -1;
 
-      // Hook: hold = reel right toward win, release = fish pulls back left
+      // Hook: hold = reel right, release = fish pulls left
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Meter fills in zone, drains outside
+      // Secondary meter: fills in zone, drains out
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
       if (inZone) {
-        this.catchMeter = Math.min(1.0, this.catchMeter + dt * 0.28);
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.28);
       } else {
-        this.catchMeter = Math.max(0, this.catchMeter - dt * this.meterDrain);
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * this.meterDrain);
       }
 
-      if (this.reelPos  >= 0.95) this._finishReel(true);   // reeled in!
-      if (this.catchMeter <= 0)  this._finishReel(false);  // meter emptied = escaped
+      // Primary: slow passive drain
+      this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
+
+      if (this.secondaryMeter <= 0)  { this._finishReel(false); return; }
+      if (this.secondaryMeter >= 1)  { this._beginQteBoost();   return; }
+      return;
+    }
+
+    if (this.state === 'qte_boost') {
+      // Showing result flash — wait then return to reel
+      if (this.qteBoostResult !== null) {
+        this.qteBoostFlash -= dt;
+        if (this.qteBoostFlash <= 0) {
+          if (this.primaryMeter >= 1) this._finishReel(true);
+          else                        this.state = 'reel';
+        }
+        return;
+      }
+
+      this.qteBoostTimer += dt;
+      if (this.qteBoostTimer >= this.qteBoostTotal) this._applyQteBoost('miss');
       return;
     }
 
@@ -188,7 +243,7 @@ export class FishingScene {
     }
   }
 
-  // ── Drawing ──────────────────────────────────────────────────────────────────
+  // ── Draw ───────────────────────────────────────────────────────────────────
 
   draw() {
     const ctx = this.ctx;
@@ -211,11 +266,11 @@ export class FishingScene {
       ctx.stroke();
     }
 
-    // Fishing line + bobber
-    const biting   = this.state === 'qte' || this.state === 'reel';
-    const bobbleAmp = biting ? Math.sin(this.t * 12) * 5 : Math.sin(this.t * 1.2) * 2;
-    const lineEndX  = cw / 2 + Math.sin(this.t * 0.5) * 20;
-    const lineEndY  = ch * 0.25 + bobbleAmp;
+    // Line + bobber
+    const biting   = this.state === 'qte_hook' || this.state === 'reel' || this.state === 'qte_boost';
+    const bobAmp   = biting ? Math.sin(this.t * 12) * 5 : Math.sin(this.t * 1.2) * 2;
+    const lineEndX = cw / 2 + Math.sin(this.t * 0.5) * 20;
+    const lineEndY = ch * 0.25 + bobAmp;
 
     ctx.strokeStyle = 'rgba(220,220,255,0.6)';
     ctx.lineWidth = 1.5;
@@ -227,10 +282,10 @@ export class FishingScene {
     ctx.beginPath(); ctx.arc(lineEndX, lineEndY - 3, biting ? 8 : 6, 0, Math.PI); ctx.fill();
 
     if (biting) {
-      ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) {
         const r = 14 + i * 8 + ((this.t * 3 + i) % 1) * 8;
         ctx.strokeStyle = `rgba(100,200,255,${0.5 - i * 0.15})`;
+        ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.arc(lineEndX, lineEndY, r, 0, Math.PI * 2); ctx.stroke();
       }
     }
@@ -238,14 +293,15 @@ export class FishingScene {
     // Panel
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
-    const py = ch * 0.35;
-    const ph = ch * 0.55;
+    const py = ch * 0.33;
+    const ph = ch * 0.58;
     this._drawPanel(px, py, pw, ph);
 
-    if (this.state === 'waiting') this._drawWaiting(px, py, pw, ph);
-    if (this.state === 'qte')     this._drawQTE(px, py, pw, ph);
-    if (this.state === 'reel')    this._drawReel(px, py, pw, ph);
-    if (this.state === 'result')  this._drawResult(px, py, pw, ph);
+    if (this.state === 'waiting')   this._drawWaiting(px, py, pw, ph);
+    if (this.state === 'qte_hook')  this._drawQteHook(px, py, pw, ph);
+    if (this.state === 'reel')      this._drawReel(px, py, pw, ph);
+    if (this.state === 'qte_boost') this._drawQteBoost(px, py, pw, ph);
+    if (this.state === 'result')    this._drawResult(px, py, pw, ph);
   }
 
   _drawPanel(px, py, pw, ph) {
@@ -264,16 +320,16 @@ export class FishingScene {
 
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '12px sans-serif';
-    ctx.fillText(`📍 ${this.spot?.label ?? ''} · ${this.gameTime.timeOfDay} · ${this.gameTime.season}`, cx, py + ph * 0.28);
+    ctx.fillText(`📍 ${this.spot?.label ?? ''} · ${this.gameTime.timeOfDay} · ${this.gameTime.season}`, cx, py + ph * 0.22);
 
     const dots = '.'.repeat(1 + Math.floor(this.t * 2) % 3);
     ctx.fillStyle = 'rgba(150,200,255,0.8)';
     ctx.font = '15px sans-serif';
-    ctx.fillText(`Waiting for a bite${dots}`, cx, py + ph * 0.45);
+    ctx.fillText(`Waiting for a bite${dots}`, cx, py + ph * 0.40);
 
     const bob = Math.sin(this.t * 1.8) * 6;
     ctx.font = '42px sans-serif';
-    ctx.fillText('🐟', cx, py + ph * 0.65 + bob);
+    ctx.fillText('🐟', cx, py + ph * 0.62 + bob);
 
     const pole = this.inventory.getEquippedPole();
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
@@ -281,10 +337,10 @@ export class FishingScene {
     ctx.fillText(`🎣 ${pole.name}  (power ${pole.power})`, cx, py + ph * 0.88);
   }
 
-  _drawQTE(px, py, pw, ph) {
+  _drawQteHook(px, py, pw, ph) {
     const ctx      = this.ctx;
     const cx       = px + pw / 2;
-    const cy       = py + ph * 0.56;
+    const cy       = py + ph * 0.52;
     const radius   = Math.min(pw * 0.27, 75);
     const progress = Math.max(0, this.qteTimer / this.qteTotalTime);
 
@@ -294,10 +350,10 @@ export class FishingScene {
     ctx.textAlign = 'center';
     ctx.fillStyle = rc;
     ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(this.pendingFish?.name ?? '???', cx, py + ph * 0.18);
+    ctx.fillText(this.pendingFish?.name ?? '???', cx, py + ph * 0.16);
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '12px sans-serif';
-    ctx.fillText(`${(this.pendingFish?.rarity ?? '').toUpperCase()} · ${this.pendingWeight} lbs`, cx, py + ph * 0.27);
+    ctx.fillText(`${(this.pendingFish?.rarity ?? '').toUpperCase()} · ${this.pendingWeight} lbs`, cx, py + ph * 0.24);
 
     // Track ring
     ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -319,7 +375,7 @@ export class FishingScene {
     const pulse = 1 + Math.sin(this.t * 10) * 0.07;
     ctx.fillStyle = arcColor;
     ctx.font = `bold ${Math.round(22 * pulse)}px sans-serif`;
-    ctx.fillText('TAP!', cx, cy + radius + 28);
+    ctx.fillText('TAP TO HOOK!', cx, cy + radius + 28);
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '11px sans-serif';
     ctx.fillText(this.qteTimer.toFixed(1) + 's', cx, cy + radius + 46);
@@ -334,22 +390,20 @@ export class FishingScene {
 
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText('HOLD TO REEL IN!', cx, py + 36);
-
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('HOLD TO REEL IN!', cx, py + ph * 0.10);
     ctx.fillStyle = rc;
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + 56);
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + ph * 0.17);
 
-    // Reel bar
-    const bw = pw * 0.82, bh = 28;
+    // ── Reel bar ──────────────────────────────────────────────
+    const bw = pw * 0.82, bh = 22;
     const bx = px + (pw - bw) / 2;
-    const by = py + ph * 0.38;
+    const by = py + ph * 0.25;
 
     ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    this._roundRect(bx, by, bw, bh, 14); ctx.fill();
+    this._roundRect(bx, by, bw, bh, 11); ctx.fill();
 
-    // Green zone
     const zx = bx + this.zoneMin * bw;
     const zw = (this.zoneMax - this.zoneMin) * bw;
     ctx.fillStyle = 'rgba(76,175,80,0.5)';
@@ -358,37 +412,121 @@ export class FishingScene {
     ctx.lineWidth = 2;
     ctx.strokeRect(zx, by, zw, bh);
 
-    // Hook indicator
     const hx     = bx + this.reelPos * bw;
     const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
     ctx.fillStyle = inZone ? '#FFEB3B' : '#EF5350';
-    ctx.beginPath(); ctx.arc(hx, by + bh / 2, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, by + bh / 2, 10, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = inZone ? '#F9A825' : '#B71C1C';
     ctx.lineWidth = 2; ctx.stroke();
 
-    // Catch meter
-    const mw = pw * 0.7, mh = 14;
-    const mx = px + (pw - mw) / 2;
-    const my = by + bh + 22;
+    // ── Secondary meter (Line Tension) ────────────────────────
+    this._drawMeterBar(px, py, pw, ph, 0.44, this.secondaryMeter,
+      'LINE TENSION', '#4CAF50',
+      this.secondaryMeter > 0.85 ? 'BOOST READY!' : null, '#4CAF50');
 
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    this._roundRect(mx, my, mw, mh, 7); ctx.fill();
+    // ── Primary meter (Catch Progress) ────────────────────────
+    this._drawMeterBar(px, py, pw, ph, 0.60, this.primaryMeter,
+      'CATCH PROGRESS', '#FF9800', null, null);
 
-    // Meter starts full and drains — color goes green → yellow → red
-    const meterColor = this.catchMeter > 0.6 ? '#4CAF50' : this.catchMeter > 0.3 ? '#FFC107' : '#EF5350';
-    ctx.fillStyle = meterColor;
-    this._roundRect(mx, my, mw * this.catchMeter, mh, 7); ctx.fill();
+    // Fish silhouette
+    this._drawFishSilhouette(cx, py + ph * 0.82, 60, 30, rc, true);
+  }
 
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('LINE TENSION', cx, my - 6);
+  _drawQteBoost(px, py, pw, ph) {
+    const ctx = this.ctx;
+    const cx  = px + pw / 2;
+    const cy  = py + ph * 0.42;
 
-    // Win marker at right edge of reel bar
-    ctx.fillStyle = '#FFEB3B';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('🏁', bx + bw, by - 6);
+    const rarityColors = { common:'#9E9E9E', uncommon:'#4CAF50', rare:'#2196F3', epic:'#9C27B0', legendary:'#FF9800' };
+    const rc = rarityColors[this.pendingFish?.rarity] ?? '#9E9E9E';
 
-    this._drawFishSilhouette(cx, py + ph * 0.78, 70, 35, rc, true);
+    const innerRadius = 38;
+    const outerRadius = Math.max(0, 85 * (1 - this.qteBoostTimer / this.qteBoostTotal));
+    const diff        = Math.abs(outerRadius - innerRadius);
+    const inPerfect   = diff < 8 && outerRadius > 0;
+
+    ctx.textAlign = 'center';
+
+    if (this.qteBoostResult !== null) {
+      // Flash result
+      const flashColors = { perfect: '#FFD700', good: '#4CAF50', miss: '#EF5350' };
+      const flashText   = { perfect: '⭐ PERFECT!  +30%', good: '✓ GOOD!  +15%', miss: '✗ MISS!  -20%' };
+      ctx.fillStyle = flashColors[this.qteBoostResult];
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(flashText[this.qteBoostResult], cx, cy);
+    } else {
+      // Instruction
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('TAP WHEN THE RINGS ALIGN', cx, py + ph * 0.14);
+
+      // Inner ring (fixed target)
+      ctx.strokeStyle = inPerfect ? '#FFD700' : 'rgba(255,255,255,0.35)';
+      ctx.lineWidth   = inPerfect ? 5 : 3;
+      ctx.beginPath(); ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2); ctx.stroke();
+
+      // Perfect glow
+      if (inPerfect) {
+        ctx.strokeStyle = 'rgba(255,215,0,0.25)';
+        ctx.lineWidth = 14;
+        ctx.beginPath(); ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      // Outer ring (shrinking)
+      if (outerRadius > 1) {
+        const outerColor = inPerfect ? '#FFD700' : outerRadius > innerRadius ? '#4CAF50' : '#EF5350';
+        ctx.strokeStyle = outerColor;
+        ctx.lineWidth   = 4;
+        ctx.beginPath(); ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      // Label
+      const pulse = 1 + Math.sin(this.t * 14) * 0.06;
+      ctx.fillStyle = inPerfect ? '#FFD700' : 'rgba(255,255,255,0.7)';
+      ctx.font = `bold ${Math.round(inPerfect ? 22 * pulse : 18)}px sans-serif`;
+      ctx.fillText(inPerfect ? 'NOW!' : 'TAP!', cx, cy + innerRadius + 26);
+    }
+
+    // Both meters always visible during boost QTE
+    this._drawMeterBar(px, py, pw, ph, 0.70, this.secondaryMeter, 'LINE TENSION',   '#4CAF50', null, null);
+    this._drawMeterBar(px, py, pw, ph, 0.84, this.primaryMeter,   'CATCH PROGRESS', '#FF9800', null, null);
+  }
+
+  // Shared helper for drawing a labeled meter bar
+  _drawMeterBar(px, py, pw, ph, yFraction, value, label, fillColor, hintText, hintColor) {
+    const ctx = this.ctx;
+    const cx  = px + pw / 2;
+    const mw  = pw * 0.82, mh = 13;
+    const mx  = px + (pw - mw) / 2;
+    const my  = py + ph * yFraction;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    this._roundRect(mx, my, mw, mh, 6); ctx.fill();
+
+    // Color shifts as value changes
+    let color = fillColor;
+    if (label === 'LINE TENSION') {
+      color = value > 0.6 ? '#4CAF50' : value > 0.3 ? '#FFC107' : '#EF5350';
+    } else if (label === 'CATCH PROGRESS') {
+      color = value > 0.7 ? '#FF9800' : value > 0.35 ? '#FFC107' : '#9E9E9E';
+    }
+
+    if (value > 0) {
+      ctx.fillStyle = color;
+      this._roundRect(mx, my, mw * Math.min(1, value), mh, 6); ctx.fill();
+    }
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(label, cx, my - 4);
+
+    if (hintText) {
+      const pulse = 0.6 + Math.abs(Math.sin(this.t * 4)) * 0.4;
+      ctx.fillStyle = `rgba(76,175,80,${pulse})`;
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(hintText, cx, my + mh + 12);
+    }
   }
 
   _drawResult(px, py, pw, ph) {
@@ -416,17 +554,17 @@ export class FishingScene {
 
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 20px sans-serif';
-      ctx.fillText(this.resultFish.name, cx, py + ph * 0.44);
+      ctx.fillText(this.resultFish.name, cx, py + ph * 0.42);
 
       ctx.fillStyle = rc;
       ctx.font = 'bold 13px sans-serif';
-      ctx.fillText(this.resultFish.rarity.toUpperCase(), cx, py + ph * 0.54);
+      ctx.fillText(this.resultFish.rarity.toUpperCase(), cx, py + ph * 0.52);
 
       ctx.fillStyle = '#FFEB3B';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(`⚖️ ${this.resultWeight} lbs  |  💰 ${Math.round(this.resultFish.value)} coins`, cx, py + ph * 0.64);
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText(`⚖️ ${this.resultWeight} lbs  |  💰 ${Math.round(this.resultFish.value)} coins`, cx, py + ph * 0.62);
 
-      this._drawFishSilhouette(cx, py + ph * 0.80, 80, 40, this.resultFish.color, true);
+      this._drawFishSilhouette(cx, py + ph * 0.78, 80, 40, this.resultFish.color, true);
 
       ctx.globalAlpha = Math.max(0, this.resultTimer - 0.8);
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -435,6 +573,8 @@ export class FishingScene {
       ctx.globalAlpha = 1;
     }
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   _roundRect(x, y, w, h, r) {
     const ctx = this.ctx;
