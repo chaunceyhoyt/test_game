@@ -59,10 +59,13 @@ function draw() {
   ctx.fillStyle = player.color;
   ctx.fill();
 
-  // Instructions
+  // Labels
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = 'bold 48px sans-serif';
+  ctx.fillText('test', canvas.width / 2, canvas.height / 2 - 80);
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.font = '16px sans-serif';
-  ctx.textAlign = 'center';
   ctx.fillText('Tap to move', canvas.width / 2, canvas.height - 24);
 }
 
