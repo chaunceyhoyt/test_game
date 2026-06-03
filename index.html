@@ -132,22 +132,31 @@
       position: fixed;
       bottom: 0; left: 0; right: 0;
       height: 88vh;
-      background: var(--panel);
       border-radius: 22px 22px 0 0;
-      border-top: 1px solid rgba(0,212,255,0.2);
-      backdrop-filter: blur(24px);
       transform: translateY(100%);
       transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
       z-index: 200;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+      /* Wood/parchment theme */
+      background: linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 55%, #E2CC84 100%);
+      border-top: 3px solid #7B4A22;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,140,0.4);
+      /* Re-scope CSS vars for all children */
+      color: #2A1000;
+      --accent:   #8B5A20;
+      --gold:     #7B4A00;
+      --green:    #3D7A1A;
+      --red:      #C62828;
+      --text:     #2A1000;
+      --text-dim: rgba(42,16,0,0.55);
+      --border:   rgba(90,50,20,0.22);
     }
     #inventory-panel.open { transform: translateY(0); }
 
     .panel-handle {
       width: 38px; height: 4px;
-      background: var(--border);
+      background: rgba(90,50,20,0.28);
       border-radius: 2px;
       margin: 10px auto 0;
       cursor: pointer;
@@ -158,6 +167,7 @@
       padding: 6px 12px 0;
       gap: 4px;
       border-bottom: 1px solid var(--border);
+      background: rgba(139,90,43,0.07);
     }
 
     .tab-btn {
@@ -185,6 +195,9 @@
       padding: 12px 14px;
       overscroll-behavior: contain;
     }
+    .panel-content::-webkit-scrollbar { width: 4px; }
+    .panel-content::-webkit-scrollbar-track { background: rgba(90,50,20,0.08); }
+    .panel-content::-webkit-scrollbar-thumb { background: rgba(90,50,20,0.28); border-radius: 2px; }
 
     /* ── Fish Cards ────────────────────────────────────────── */
     .fish-summary {
@@ -216,7 +229,7 @@
       gap: 12px;
       padding: 10px 12px;
       border-radius: 14px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,248,220,0.65);
       margin-bottom: 8px;
       border: 1px solid var(--border);
     }
@@ -262,7 +275,7 @@
       gap: 12px;
       padding: 10px 12px;
       border-radius: 12px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,248,220,0.65);
       border: 1px solid var(--border);
       margin-bottom: 6px;
     }
@@ -299,7 +312,7 @@
     .dex-progress-bar {
       flex: 1;
       height: 8px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(90,50,20,0.15);
       border-radius: 4px;
       overflow: hidden;
     }
@@ -322,13 +335,13 @@
       align-items: center;
       padding: 10px 6px 8px;
       border-radius: 14px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,248,220,0.65);
       border: 1px solid var(--border);
       text-align: center;
       gap: 4px;
     }
-    .dex-card.caught { border-color: rgba(255,255,255,0.18); }
-    .dex-card.uncaught { opacity: 0.45; filter: grayscale(1); }
+    .dex-card.caught { border-color: rgba(90,50,20,0.28); }
+    .dex-card.uncaught { opacity: 0.5; filter: grayscale(0.8) sepia(0.3); }
     .dex-fish-img { width: 52px; height: 52px; }
     .dex-fish-name { font-size: 11px; font-weight: 700; line-height: 1.2; }
     .dex-fish-stat { font-size: 10px; color: var(--text-dim); }

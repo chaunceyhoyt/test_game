@@ -17,12 +17,14 @@ export class FishingScene {
     this.qteTotalTime = 0;
 
     // Reel bar
-    this.reelPos   = 0.15;
-    this.zoneMin   = 0.35;
-    this.zoneMax   = 0.65;
-    this.zoneDir   = 1;
-    this.zoneSpeed = 0.22;
-    this.reelHeld  = false;
+    this.reelPos         = 0.15;
+    this.zoneMin         = 0.35;
+    this.zoneMax         = 0.65;
+    this.zoneDir         = 1;
+    this.zoneSpeed       = 0.22;
+    this.zoneBaseSpeed   = 0.22;   // reference speed for burst resets
+    this.zoneSpeedModTimer = 0;    // countdown to next random burst
+    this.reelHeld        = false;
 
     // Secondary meter (Line Tension) — fills in zone, drains out
     this.secondaryMeter = 0.5;
@@ -142,44 +144,60 @@ export class FishingScene {
     this.qteCount       = 0;
     this.inventory.useBait(); // consume bait on hook
 
-    const rarity = this.pendingFish?.rarity ?? 'common';
+    const rarity    = this.pendingFish?.rarity ?? 'common';
+    const polePower = this.inventory.getEquippedPole().power;
+    const fish      = this.pendingFish;
 
-    const raritySpeed = { common: 0.18, uncommon: 0.25, rare: 0.32, epic: 0.42, legendary: 0.55 };
-    this.zoneSpeed = raritySpeed[rarity] ?? 0.22;
+    // Base speed by rarity
+    const raritySpeed = { common: 0.16, uncommon: 0.24, rare: 0.34, epic: 0.46, legendary: 0.62 };
+    let spd = raritySpeed[rarity] ?? 0.24;
+
+    // Heavier fish (relative to its weight range) = faster zone
+    if (fish && fish.maxWeight > fish.minWeight) {
+      const wn = (this.pendingWeight - fish.minWeight) / (fish.maxWeight - fish.minWeight);
+      spd += wn * 0.18;
+    }
+
+    // Stronger pole = slightly better control (slower zone)
+    spd *= Math.max(0.65, 1 - (polePower - 1) * 0.06);
+
+    // Lure bait = fish more agitated = faster zone
+    const bait = this.inventory.getEquippedBait();
+    if (bait?.type === 'lure') spd *= 1.15;
+
+    // Initial ±25% random variation
+    spd *= 0.75 + Math.random() * 0.50;
+
+    this.zoneBaseSpeed     = spd;
+    this.zoneSpeed         = spd;
+    this.zoneSpeedModTimer = 0.5 + Math.random() * 1.0; // first burst timing
 
     const rarityDrain = { common: 0.15, uncommon: 0.20, rare: 0.28, epic: 0.38, legendary: 0.50 };
     this.meterDrain   = rarityDrain[rarity] ?? 0.20;
     this.primaryDrain = 0.02;
 
-    // Set initial zone around center
     this.zoneMin = 0.35;
     this.zoneMax = 0.65;
     this._applyZoneWindow();
   }
 
   // Recalculates zone width from rarity + pole power + fish weight + QTE count.
-  // Keeps the zone centered on its current midpoint so oscillation isn't disrupted.
   _applyZoneWindow() {
     const rarity    = this.pendingFish?.rarity ?? 'common';
     const polePower = this.inventory.getEquippedPole().power;
     const fish      = this.pendingFish;
 
-    // Base window by rarity (common is wide, legendary is tight)
     const rarityWindow = { common: 0.36, uncommon: 0.30, rare: 0.24, epic: 0.18, legendary: 0.12 };
     let win = rarityWindow[rarity] ?? 0.30;
 
-    // Stronger pole = noticeably bigger window (+5% per power point above 1)
     win += (polePower - 1) * 0.05;
 
-    // Heavier fish relative to its range = smaller window (up to -10%)
     if (fish && fish.maxWeight > fish.minWeight) {
       const weightNorm = (this.pendingWeight - fish.minWeight) / (fish.maxWeight - fish.minWeight);
       win -= weightNorm * 0.10;
     }
 
-    // Each boost QTE narrows the window — fish fights smarter as it tires
     win -= this.qteCount * 0.025;
-
     win = Math.max(0.07, Math.min(0.52, win));
 
     const center  = (this.zoneMin + this.zoneMax) / 2;
@@ -202,7 +220,6 @@ export class FishingScene {
     else if (result === 'good')    this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
     else                           this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
 
-    // Each boost QTE shrinks the zone window
     this.qteCount++;
     this._applyZoneWindow();
   }
@@ -243,6 +260,13 @@ export class FishingScene {
       this.zoneMax += dt * this.zoneDir * this.zoneSpeed;
       if (this.zoneMax >= 0.92 || this.zoneMin <= 0.08) this.zoneDir *= -1;
 
+      // Random speed bursts (fish lunges)
+      this.zoneSpeedModTimer -= dt;
+      if (this.zoneSpeedModTimer <= 0) {
+        this.zoneSpeed         = this.zoneBaseSpeed * (0.35 + Math.random() * 1.7);
+        this.zoneSpeedModTimer = 0.35 + Math.random() * 1.1;
+      }
+
       // Hook: hold = reel right, release = fish pulls left
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
@@ -255,7 +279,6 @@ export class FishingScene {
         this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * this.meterDrain);
       }
 
-      // Primary: slow passive drain
       this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
 
       if (this.secondaryMeter <= 0)  { this._finishReel(false); return; }
@@ -264,7 +287,6 @@ export class FishingScene {
     }
 
     if (this.state === 'qte_boost') {
-      // Showing result flash — wait then return to reel
       if (this.qteBoostResult !== null) {
         this.qteBoostFlash -= dt;
         if (this.qteBoostFlash <= 0) {
@@ -331,7 +353,7 @@ export class FishingScene {
       }
     }
 
-    // Panel — 140px bottom clearance: 72px nav + up to 34px safe area + buffer
+    // Panel — 140px bottom clearance
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
     const py = ch * 0.33;
@@ -347,11 +369,69 @@ export class FishingScene {
 
   _drawPanel(px, py, pw, ph) {
     const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(10,15,40,0.92)';
-    this._roundRect(px, py, pw, ph, 20); ctx.fill();
-    ctx.strokeStyle = 'rgba(100,180,255,0.25)';
+    const r = 18;
+
+    // Wood frame outer fill
+    const woodGrad = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    woodGrad.addColorStop(0,    '#5C3310');
+    woodGrad.addColorStop(0.25, '#7B4A22');
+    woodGrad.addColorStop(0.55, '#6A3D18');
+    woodGrad.addColorStop(0.8,  '#8B5A28');
+    woodGrad.addColorStop(1,    '#4A2A0E');
+    ctx.fillStyle = woodGrad;
+    this._roundRect(px, py, pw, ph, r); ctx.fill();
+
+    // Wood grain lines (deterministic — no Math.random in draw loop)
+    ctx.save();
+    this._roundRect(px, py, pw, ph, r);
+    ctx.clip();
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < ph; i += 5) {
+      ctx.strokeStyle = (i % 15 < 8) ? 'rgba(0,0,0,0.10)' : 'rgba(210,150,60,0.07)';
+      ctx.beginPath();
+      let first = true;
+      for (let x = 0; x <= pw; x += 10) {
+        const yy = py + i + Math.sin((i + x) * 0.18) * 1.4;
+        first ? ctx.moveTo(px + x, yy) : ctx.lineTo(px + x, yy);
+        first = false;
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Outer highlight
+    ctx.strokeStyle = 'rgba(210,155,70,0.38)';
     ctx.lineWidth = 1.5;
-    this._roundRect(px, py, pw, ph, 20); ctx.stroke();
+    this._roundRect(px, py, pw, ph, r); ctx.stroke();
+
+    // Parchment interior
+    const pad = 7;
+    const ri  = r - 4;
+    const pGrad = ctx.createLinearGradient(px, py, px, py + ph);
+    pGrad.addColorStop(0,   '#F6EAD0');
+    pGrad.addColorStop(0.4, '#EDD9A0');
+    pGrad.addColorStop(1,   '#E2CC84');
+    ctx.fillStyle = pGrad;
+    this._roundRect(px + pad, py + pad, pw - pad * 2, ph - pad * 2, ri); ctx.fill();
+
+    // Parchment fiber texture (horizontal, deterministic)
+    ctx.save();
+    this._roundRect(px + pad, py + pad, pw - pad * 2, ph - pad * 2, ri);
+    ctx.clip();
+    for (let i = 0; i < ph; i += 4) {
+      ctx.strokeStyle = (i % 8 === 0) ? 'rgba(139,90,43,0.06)' : 'rgba(180,140,70,0.04)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(px + pad, py + pad + i);
+      ctx.lineTo(px + pw - pad, py + pad + i + Math.sin(i * 0.25) * 0.7);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Inner edge shadow
+    ctx.strokeStyle = 'rgba(90,50,20,0.18)';
+    ctx.lineWidth = 1.5;
+    this._roundRect(px + pad, py + pad, pw - pad * 2, ph - pad * 2, ri); ctx.stroke();
   }
 
   _drawWaiting(px, py, pw, ph) {
@@ -359,13 +439,13 @@ export class FishingScene {
     const cx  = px + pw / 2;
     ctx.textAlign = 'center';
 
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = 'rgba(42,16,0,0.45)';
     ctx.font = '12px sans-serif';
     ctx.fillText(`📍 ${this.spot?.label ?? ''} · ${this.gameTime.timeOfDay} · ${this.gameTime.season}`, cx, py + ph * 0.22);
 
     const dots = '.'.repeat(1 + Math.floor(this.t * 2) % 3);
-    ctx.fillStyle = 'rgba(150,200,255,0.8)';
-    ctx.font = '15px sans-serif';
+    ctx.fillStyle = 'rgba(42,16,0,0.80)';
+    ctx.font = 'bold 15px sans-serif';
     ctx.fillText(`Waiting for a bite${dots}`, cx, py + ph * 0.40);
 
     const bob = Math.sin(this.t * 1.8) * 6;
@@ -375,11 +455,11 @@ export class FishingScene {
     const pole = this.inventory.getEquippedPole();
     const bait = this.inventory.getEquippedBait();
     const baitLabel = bait ? (bait.type === 'worm' ? `🪱 ${bait.name} x${bait.count}` : `🎣 ${bait.name} ❤️${bait.health}`) : '🚫 No bait';
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillStyle = 'rgba(42,16,0,0.45)';
     ctx.font = '11px sans-serif';
     ctx.fillText(`🎣 ${pole.name}  ·  ${baitLabel}`, cx, py + ph * 0.85);
 
-    ctx.fillStyle = 'rgba(255,100,100,0.5)';
+    ctx.fillStyle = 'rgba(160,30,30,0.75)';
     ctx.font = '11px sans-serif';
     ctx.fillText('Tap to cancel', cx, py + ph * 0.93);
   }
@@ -398,12 +478,12 @@ export class FishingScene {
     ctx.fillStyle = rc;
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(this.pendingFish?.name ?? '???', cx, py + ph * 0.16);
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = 'rgba(42,16,0,0.55)';
     ctx.font = '12px sans-serif';
     ctx.fillText(`${(this.pendingFish?.rarity ?? '').toUpperCase()} · ${this.pendingWeight} lbs`, cx, py + ph * 0.24);
 
     // Track ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.strokeStyle = 'rgba(42,16,0,0.15)';
     ctx.lineWidth = 10;
     ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.stroke();
 
@@ -423,7 +503,7 @@ export class FishingScene {
     ctx.fillStyle = arcColor;
     ctx.font = `bold ${Math.round(22 * pulse)}px sans-serif`;
     ctx.fillText('TAP TO HOOK!', cx, cy + radius + 28);
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = 'rgba(42,16,0,0.5)';
     ctx.font = '11px sans-serif';
     ctx.fillText(this.qteTimer.toFixed(1) + 's', cx, cy + radius + 46);
   }
@@ -436,7 +516,7 @@ export class FishingScene {
     const rc = rarityColors[this.pendingFish?.rarity] ?? '#9E9E9E';
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#2A1000';
     ctx.font = 'bold 14px sans-serif';
     ctx.fillText('HOLD TO REEL IN!', cx, py + ph * 0.10);
     ctx.fillStyle = rc;
@@ -448,14 +528,14 @@ export class FishingScene {
     const bx = px + (pw - bw) / 2;
     const by = py + ph * 0.25;
 
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillStyle = 'rgba(42,16,0,0.1)';
     this._roundRect(bx, by, bw, bh, 11); ctx.fill();
 
     const zx = bx + this.zoneMin * bw;
     const zw = (this.zoneMax - this.zoneMin) * bw;
-    ctx.fillStyle = 'rgba(76,175,80,0.5)';
+    ctx.fillStyle = 'rgba(60,110,20,0.30)';
     ctx.fillRect(zx, by, zw, bh);
-    ctx.strokeStyle = '#4CAF50';
+    ctx.strokeStyle = '#3D7A1A';
     ctx.lineWidth = 2;
     ctx.strokeRect(zx, by, zw, bh);
 
@@ -469,7 +549,7 @@ export class FishingScene {
     // ── Secondary meter (Line Tension) ────────────────────────
     this._drawMeterBar(px, py, pw, ph, 0.44, this.secondaryMeter,
       'LINE TENSION', '#4CAF50',
-      this.secondaryMeter > 0.85 ? 'BOOST READY!' : null, '#4CAF50');
+      this.secondaryMeter > 0.85 ? 'BOOST READY!' : null, '#3D7A1A');
 
     // ── Primary meter (Catch Progress) ────────────────────────
     this._drawMeterBar(px, py, pw, ph, 0.60, this.primaryMeter,
@@ -495,31 +575,27 @@ export class FishingScene {
     ctx.textAlign = 'center';
 
     if (this.qteBoostResult !== null) {
-      // Flash result
       const flashColors = { perfect: '#FFD700', good: '#4CAF50', miss: '#EF5350' };
       const flashText   = { perfect: '⭐ PERFECT!  +30%', good: '✓ GOOD!  +15%', miss: '✗ MISS!  -20%' };
       ctx.fillStyle = flashColors[this.qteBoostResult];
       ctx.font = 'bold 26px sans-serif';
       ctx.fillText(flashText[this.qteBoostResult], cx, cy);
     } else {
-      // Instruction
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillStyle = 'rgba(42,16,0,0.55)';
       ctx.font = '11px sans-serif';
       ctx.fillText('TAP WHEN THE RINGS ALIGN', cx, py + ph * 0.14);
 
       // Inner ring (fixed target)
-      ctx.strokeStyle = inPerfect ? '#FFD700' : 'rgba(255,255,255,0.35)';
+      ctx.strokeStyle = inPerfect ? '#FFD700' : 'rgba(42,16,0,0.30)';
       ctx.lineWidth   = inPerfect ? 5 : 3;
       ctx.beginPath(); ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2); ctx.stroke();
 
-      // Perfect glow
       if (inPerfect) {
         ctx.strokeStyle = 'rgba(255,215,0,0.25)';
         ctx.lineWidth = 14;
         ctx.beginPath(); ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2); ctx.stroke();
       }
 
-      // Outer ring (shrinking)
       if (outerRadius > 1) {
         const outerColor = inPerfect ? '#FFD700' : outerRadius > innerRadius ? '#4CAF50' : '#EF5350';
         ctx.strokeStyle = outerColor;
@@ -527,19 +603,16 @@ export class FishingScene {
         ctx.beginPath(); ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2); ctx.stroke();
       }
 
-      // Label
       const pulse = 1 + Math.sin(this.t * 14) * 0.06;
-      ctx.fillStyle = inPerfect ? '#FFD700' : 'rgba(255,255,255,0.7)';
+      ctx.fillStyle = inPerfect ? '#FFD700' : 'rgba(42,16,0,0.72)';
       ctx.font = `bold ${Math.round(inPerfect ? 22 * pulse : 18)}px sans-serif`;
       ctx.fillText(inPerfect ? 'NOW!' : 'TAP!', cx, cy + innerRadius + 26);
     }
 
-    // Both meters always visible during boost QTE
     this._drawMeterBar(px, py, pw, ph, 0.70, this.secondaryMeter, 'LINE TENSION',   '#4CAF50', null, null);
     this._drawMeterBar(px, py, pw, ph, 0.84, this.primaryMeter,   'CATCH PROGRESS', '#FF9800', null, null);
   }
 
-  // Shared helper for drawing a labeled meter bar
   _drawMeterBar(px, py, pw, ph, yFraction, value, label, fillColor, hintText, hintColor) {
     const ctx = this.ctx;
     const cx  = px + pw / 2;
@@ -547,15 +620,14 @@ export class FishingScene {
     const mx  = px + (pw - mw) / 2;
     const my  = py + ph * yFraction;
 
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.fillStyle = 'rgba(42,16,0,0.10)';
     this._roundRect(mx, my, mw, mh, 6); ctx.fill();
 
-    // Color shifts as value changes
     let color = fillColor;
     if (label === 'LINE TENSION') {
-      color = value > 0.6 ? '#4CAF50' : value > 0.3 ? '#FFC107' : '#EF5350';
+      color = value > 0.6 ? '#3D7A1A' : value > 0.3 ? '#B8860B' : '#C62828';
     } else if (label === 'CATCH PROGRESS') {
-      color = value > 0.7 ? '#FF9800' : value > 0.35 ? '#FFC107' : '#9E9E9E';
+      color = value > 0.7 ? '#C07020' : value > 0.35 ? '#B8860B' : '#888070';
     }
 
     if (value > 0) {
@@ -564,13 +636,13 @@ export class FishingScene {
     }
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillStyle = 'rgba(42,16,0,0.55)';
     ctx.font = '10px sans-serif';
     ctx.fillText(label, cx, my - 4);
 
     if (hintText) {
       const pulse = 0.6 + Math.abs(Math.sin(this.t * 4)) * 0.4;
-      ctx.fillStyle = `rgba(76,175,80,${pulse})`;
+      ctx.fillStyle = `rgba(60,120,20,${pulse})`;
       ctx.font = 'bold 10px sans-serif';
       ctx.fillText(hintText, cx, my + mh + 12);
     }
@@ -582,10 +654,10 @@ export class FishingScene {
     ctx.textAlign = 'center';
 
     if (this.escaped) {
-      ctx.fillStyle = '#EF5350';
+      ctx.fillStyle = '#C62828';
       ctx.font = 'bold 26px sans-serif';
       ctx.fillText('It got away! 😞', cx, py + ph * 0.38);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillStyle = 'rgba(42,16,0,0.55)';
       ctx.font = '14px sans-serif';
       ctx.fillText('Tap to try again', cx, py + ph * 0.56);
     } else if (this.resultFish) {
@@ -599,7 +671,7 @@ export class FishingScene {
       ctx.font = 'bold 22px sans-serif';
       ctx.fillText('🎉  CAUGHT!', cx, py + ph * 0.28);
 
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#2A1000';
       ctx.font = 'bold 20px sans-serif';
       ctx.fillText(this.resultFish.name, cx, py + ph * 0.42);
 
@@ -607,14 +679,14 @@ export class FishingScene {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillText(this.resultFish.rarity.toUpperCase(), cx, py + ph * 0.52);
 
-      ctx.fillStyle = '#FFEB3B';
+      ctx.fillStyle = '#7B4A00';
       ctx.font = 'bold 15px sans-serif';
       ctx.fillText(`⚖️ ${this.resultWeight} lbs  |  💰 ${Math.round(this.resultFish.value)} coins`, cx, py + ph * 0.62);
 
       this._drawFishSilhouette(cx, py + ph * 0.78, 80, 40, this.resultFish.color, true);
 
       ctx.globalAlpha = Math.max(0, this.resultTimer - 0.8);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillStyle = 'rgba(42,16,0,0.5)';
       ctx.font = '13px sans-serif';
       ctx.fillText('Tap to continue', cx, py + ph * 0.94);
       ctx.globalAlpha = 1;
