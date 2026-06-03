@@ -32,6 +32,9 @@ export class FishingScene {
     this.jumpCooldownMax = 2.0;
     this.jumpFlash       = 0;
 
+    // Deferred vibration — queued from game-loop context, fired on next pointer event
+    this._pendingVibrate = null;
+
     // Secondary meter (Line Tension) — fills in zone, drains out
     this.secondaryMeter = 0.5;
     this.meterDrain     = 0.20;
@@ -98,13 +101,19 @@ export class FishingScene {
     e.preventDefault();
     this.reelHeld = true;
 
+    // Flush any vibration queued from the game loop (needs user-activation context)
+    if (this._pendingVibrate) {
+      this._vibrate(this._pendingVibrate);
+      this._pendingVibrate = null;
+    }
+
     if (this.state === 'waiting') {
       this.onDone(null); // cancel — return to world
       return;
     }
 
     if (this.state === 'qte_hook') {
-      this._vibrate([70]); // solid hook-set thud
+      this._vibrate([150]); // solid hook-set thud
       this._beginReel();
       return;
     }
@@ -117,7 +126,7 @@ export class FishingScene {
         this.jumpCooldown = this.jumpCooldownMax;
         this.jumpFlash    = 0.45;
         this.lastTapTime  = 0;
-        this._vibrate([30]); // snappy little buzz
+        this._vibrate([80]); // snappy little buzz
       } else {
         this.lastTapTime = now;
       }
@@ -150,7 +159,7 @@ export class FishingScene {
 
   _beginQteHook() {
     this.state = 'qte_hook';
-    this._vibrate([40, 25, 40]); // bite alert — two quick pulses
+    this._pendingVibrate = [90, 60, 90]; // queued — fires on next tap (user activation)
     const rarityBaseTime = { common: 3.0, uncommon: 2.2, rare: 1.5, epic: 1.0, legendary: 0.6 };
     const base      = rarityBaseTime[this.pendingFish?.rarity ?? 'common'] ?? 2.0;
     const polePower = this.inventory.getEquippedPole().power;
@@ -244,13 +253,13 @@ export class FishingScene {
 
     if (result === 'perfect') {
       this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
-      this._vibrate([120]);           // long satisfying buzz
+      this._vibrate([220]);           // long satisfying buzz
     } else if (result === 'good') {
       this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
-      this._vibrate([60]);            // medium buzz
+      this._vibrate([110]);            // medium buzz
     } else {
       this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
-      this._vibrate([30, 40, 30]);    // error rattle
+      this._vibrate([70, 60, 70]);    // error rattle
     }
 
     this.qteCount++;
@@ -265,10 +274,10 @@ export class FishingScene {
       this.resultFish   = this.pendingFish;
       this.resultWeight = this.pendingWeight;
       this.inventory.addFish(this.pendingFish, this.pendingWeight);
-      this._vibrate([80, 40, 80, 40, 200]); // celebration pattern
+      this._pendingVibrate = [120, 60, 120, 60, 300]; // queued — fires on result tap
     } else {
       this.resultFish = null;
-      this._vibrate([250]);                  // long sad buzz
+      this._pendingVibrate = [400];                  // queued — fires on result tap
     }
   }
 
@@ -810,7 +819,13 @@ export class FishingScene {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   _vibrate(pattern) {
-    try { navigator.vibrate?.(pattern); } catch {}
+    if (!navigator.vibrate) return;
+    try {
+      const ok = navigator.vibrate(pattern);
+      if (!ok) console.warn('[Vibrate] returned false — vibration may be disabled or not permitted', pattern);
+    } catch (err) {
+      console.warn('[Vibrate] error:', err, pattern);
+    }
   }
 
   _roundRect(x, y, w, h, r) {
