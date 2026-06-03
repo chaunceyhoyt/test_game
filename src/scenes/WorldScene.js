@@ -10,7 +10,7 @@ export class WorldScene {
     this.inventory     = inventory;
     this.onOpenShop    = onOpenShop;
 
-    this.player = { x: 0, y: 0, tx: 0, ty: 0, speed: 130, state: 'idle', pendingSpot: null };
+    this.player = { x: 0, y: 0, tx: 0, ty: 0, speed: 130, state: 'idle', pendingSpot: null, _path: [], _pathIdx: 0 };
     this.boat   = { x: 0, y: 0, tx: 0, ty: 0, heading: -Math.PI / 2 };
 
     this.playerOnBoat       = false;
@@ -242,13 +242,11 @@ export class WorldScene {
 
     // ── Not on boat ──
 
-    // Tap boat → walk to dock edge and auto-board
+    // Tap boat → walk to shore edge beside boat and auto-board
     if (!this.boardingBoat) {
       const bd = Math.hypot(wx - this.boat.x, wy - this.boat.y);
       if (bd < 35) {
-        this.player.tx    = this.boat.x;
-        this.player.ty    = this.waterY + 8;
-        this.player.state = 'walking';
+        this._walkTo(this.boat.x, this.waterY + 8);
         this.player.pendingSpot = null;
         this.boardingBoat = true;
         return;
@@ -258,9 +256,7 @@ export class WorldScene {
     // Tap shop building
     if (Math.hypot(wx - this.shop.x, wy - this.shop.y) < 48) {
       const target = this._nearestWalkable(this.shop.x, this.shop.y + 28);
-      this.player.tx    = target.x;
-      this.player.ty    = target.y;
-      this.player.state = 'walking';
+      this._walkTo(target.x, target.y);
       this.player.pendingSpot   = null;
       this._pendingInteraction  = 'shop';
       this.boardingBoat         = false;
@@ -270,9 +266,7 @@ export class WorldScene {
     // Tap fishing spot
     for (const spot of this.spots) {
       if (Math.hypot(wx - spot.wx, wy - spot.wy) < 55) {
-        this.player.tx    = spot.sx;
-        this.player.ty    = spot.sy;
-        this.player.state = 'walking';
+        this._walkTo(spot.sx, spot.sy);
         this.player.pendingSpot = spot;
         this.boardingBoat = false;
         this._pendingInteraction = null;
@@ -282,12 +276,73 @@ export class WorldScene {
 
     // Walk somewhere
     const target = this._nearestWalkable(wx, wy);
-    this.player.tx    = target.x;
-    this.player.ty    = target.y;
-    this.player.state = 'walking';
+    this._walkTo(target.x, target.y);
     this.player.pendingSpot   = null;
     this.boardingBoat         = false;
     this._pendingInteraction  = null;
+  }
+
+  // ── Pathfinding ────────────────────────────────────────────────────────────
+
+  _segmentClear(x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    for (const obs of this.obstacles) {
+      const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((obs.x - x1) * dx + (obs.y - y1) * dy) / len2));
+      const cx = x1 + t * dx - obs.x;
+      const cy = y1 + t * dy - obs.y;
+      if (cx * cx + cy * cy < (obs.r + 6) * (obs.r + 6)) return false;
+    }
+    return true;
+  }
+
+  _buildPath(sx, sy, tx, ty, depth = 0) {
+    const end = { x: tx, y: ty };
+    if (depth >= 4 || this._segmentClear(sx, sy, tx, ty)) return [end];
+
+    const ddx = tx - sx, ddy = ty - sy;
+    const segLen2 = ddx * ddx + ddy * ddy;
+    if (segLen2 === 0) return [end];
+
+    let blocking = null, bestT = Infinity;
+    for (const obs of this.obstacles) {
+      const t = Math.max(0, Math.min(1, ((obs.x - sx) * ddx + (obs.y - sy) * ddy) / segLen2));
+      const cx = sx + t * ddx - obs.x;
+      const cy = sy + t * ddy - obs.y;
+      if (cx * cx + cy * cy < (obs.r + 8) * (obs.r + 8) && t < bestT) {
+        bestT = t; blocking = obs;
+      }
+    }
+    if (!blocking) return [end];
+
+    const len = Math.hypot(ddx, ddy);
+    const px = -ddy / len, py = ddx / len;
+    const margin = blocking.r + 18;
+    const cw = this.canvas.width;
+
+    const w1 = {
+      x: Math.max(5, Math.min(cw - 5, blocking.x + px * margin)),
+      y: Math.max(this.waterY + 4, blocking.y + py * margin),
+    };
+    const w2 = {
+      x: Math.max(5, Math.min(cw - 5, blocking.x - px * margin)),
+      y: Math.max(this.waterY + 4, blocking.y - py * margin),
+    };
+
+    const d1 = Math.hypot(w1.x - sx, w1.y - sy) + Math.hypot(tx - w1.x, ty - w1.y);
+    const d2 = Math.hypot(w2.x - sx, w2.y - sy) + Math.hypot(tx - w2.x, ty - w2.y);
+    const w = d1 <= d2 ? w1 : w2;
+
+    return [w, ...this._buildPath(w.x, w.y, tx, ty, depth + 1)];
+  }
+
+  _walkTo(tx, ty) {
+    const path = this._buildPath(this.player.x, this.player.y, tx, ty);
+    this.player._path    = path;
+    this.player._pathIdx = 0;
+    this.player.tx       = path[0].x;
+    this.player.ty       = path[0].y;
+    this.player.state    = 'walking';
   }
 
   // ── Walkability ────────────────────────────────────────────────────────────
@@ -354,7 +409,7 @@ export class WorldScene {
   }
 
   _updatePlayer(dt) {
-    if (this.playerOnBoat) return; // player moves with boat
+    if (this.playerOnBoat) return;
 
     const p = this.player;
     const dx = p.tx - p.x, dy = p.ty - p.y;
@@ -365,15 +420,21 @@ export class WorldScene {
       const nx = p.x + (dx / dist) * step;
       const ny = p.y + (dy / dist) * step;
 
-      if (this._isWalkable(nx, ny))      { p.x = nx; p.y = ny; }
-      else if (this._isWalkable(nx, p.y)) { p.x = nx; }
-      else if (this._isWalkable(p.x, ny)) { p.y = ny; }
+      if      (this._isWalkable(nx, ny))   { p.x = nx; p.y = ny; }
+      else if (this._isWalkable(nx, p.y))  { p.x = nx; }
+      else if (this._isWalkable(p.x, ny))  { p.y = ny; }
 
       if (Math.random() < 0.3)
         this.walkParticles.push({ x: p.x, y: p.y + 8, vx: (Math.random()-0.5)*20, vy: -10, life: 0.4 });
     } else {
       p.x = p.tx; p.y = p.ty;
-      if (p.state === 'walking') {
+
+      // Advance to next waypoint, or finish
+      if (p._path.length > 0 && p._pathIdx < p._path.length - 1) {
+        p._pathIdx++;
+        p.tx = p._path[p._pathIdx].x;
+        p.ty = p._path[p._pathIdx].y;
+      } else if (p.state === 'walking') {
         p.state = 'idle';
         if (p.pendingSpot) {
           this.onStartFishing(p.pendingSpot);
