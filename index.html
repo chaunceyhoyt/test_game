@@ -421,6 +421,186 @@
       font-style: italic;
     }
 
+    /* ── Shop Panel ────────────────────────────────────────── */
+    #shop-panel.open { transform: translateY(0) !important; }
+
+    .shop-handle {
+      width: 38px; height: 4px;
+      background: rgba(90,50,20,0.28);
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      cursor: pointer;
+    }
+
+    .shop-header {
+      text-align: center;
+      padding: 6px 16px 10px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+    }
+    .shop-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #2A1000;
+      letter-spacing: 0.5px;
+    }
+    .shop-header p {
+      font-size: 12px;
+      color: rgba(42,16,0,0.6);
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    .shop-greeting-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px 20px;
+    }
+    .shop-action-btn {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(90,50,20,0.3);
+      background: rgba(255,248,220,0.7);
+      color: #2A1000;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .shop-action-btn:active { background: rgba(255,235,180,0.95); }
+    .shop-action-btn.leave {
+      background: transparent;
+      color: rgba(42,16,0,0.5);
+      font-size: 13px;
+      border-color: rgba(90,50,20,0.15);
+    }
+
+    .shop-back-btn {
+      background: none;
+      border: none;
+      color: rgba(42,16,0,0.6);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-align: left;
+      display: block;
+    }
+
+    .shop-tabs {
+      display: flex;
+      padding: 0 12px;
+      gap: 4px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+    }
+
+    .shop-item-list {
+      padding: 12px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .shop-item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,248,220,0.65);
+      border: 1px solid rgba(90,50,20,0.15);
+      margin-bottom: 8px;
+    }
+    .shop-item-info { flex: 1; min-width: 0; }
+    .shop-item-name { font-size: 14px; font-weight: 700; color: #2A1000; }
+    .shop-item-desc { font-size: 11px; color: rgba(42,16,0,0.55); margin-top: 2px; }
+    .shop-item-price { font-size: 13px; font-weight: 700; color: #7B4A00; white-space: nowrap; }
+    .shop-buy-btn {
+      background: rgba(61,122,26,0.18);
+      color: #3D7A1A;
+      border: 1px solid #3D7A1A;
+      border-radius: 10px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .shop-buy-btn:active { background: rgba(61,122,26,0.35); }
+    .shop-buy-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: rgba(42,16,0,0.4);
+      border-color: rgba(42,16,0,0.2);
+      background: transparent;
+    }
+
+    .shop-sell-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+      gap: 8px;
+    }
+    .shop-sell-header span {
+      font-size: 14px;
+      font-weight: 700;
+      color: #2A1000;
+      flex: 1;
+    }
+    .shop-sell-all-btn {
+      background: rgba(198,40,40,0.15);
+      color: #C62828;
+      border: 1px solid #C62828;
+      border-radius: 12px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .shop-sell-all-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .shop-fish-list {
+      padding: 10px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .shop-fish-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,248,220,0.65);
+      border: 1px solid rgba(90,50,20,0.15);
+      margin-bottom: 8px;
+    }
+    .shop-fish-info { flex: 1; min-width: 0; }
+    .shop-fish-name { font-size: 13px; font-weight: 700; color: #2A1000; }
+    .shop-fish-sub  { font-size: 11px; color: rgba(42,16,0,0.55); margin-top: 1px; }
+    .shop-fish-stars { letter-spacing: 1px; font-size: 12px; }
+    .shop-fish-price { font-size: 13px; font-weight: 700; color: #7B4A00; }
+    .shop-sell-btn {
+      background: rgba(198,40,40,0.15);
+      color: #C62828;
+      border: 1px solid #C62828;
+      border-radius: 10px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .shop-sell-btn:active { background: rgba(198,40,40,0.3); }
+
+    .shop-empty {
+      text-align: center;
+      color: rgba(42,16,0,0.45);
+      font-size: 14px;
+      padding: 40px 20px;
+      line-height: 1.8;
+    }
+
     /* ── Catch Toast ───────────────────────────────────────── */
     .catch-toast {
       position: fixed;

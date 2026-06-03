@@ -45,6 +45,7 @@ import { WorldScene }          from './scenes/WorldScene.js';
 import { FishingScene }        from './scenes/FishingScene.js';
 import { HUD }                 from './ui/HUD.js';
 import { InventoryPanel }      from './ui/InventoryPanel.js';
+import { ShopPanel }           from './ui/ShopPanel.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
@@ -57,30 +58,37 @@ const selector   = new FishSelector(fishDb);
 const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const hud      = new HUD(inventory, gameTime, () => invPanel.toggle());
-const invPanel = new InventoryPanel(inventory, fishDb, appearance);
+const hud       = new HUD(inventory, gameTime, () => invPanel.toggle());
+const invPanel  = new InventoryPanel(inventory, fishDb, appearance);
+const shopPanel = new ShopPanel(inventory, fishDb);
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 let activeScene = 'world';
 let worldScene, fishingScene;
+let worldState  = null; // full world state persisted across fishing trips
 
-function startWorld(playerPos) {
+function startWorld(state) {
   fishingScene?.destroy();
   fishingScene = null;
-  activeScene = 'world';
-  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot), playerPos, appearance);
+  activeScene  = 'world';
+  worldScene   = new WorldScene(
+    canvas, gameTime,
+    (spot) => startFishing(spot),
+    state,
+    appearance,
+    inventory,
+    () => shopPanel.open()
+  );
 }
 
 function startFishing(spot) {
-  const playerPos = worldScene?.getPlayerPos();
-  activeScene = 'fishing';
+  worldState   = worldScene?.getState(); // capture boat pos, zoom, playerOnBoat
+  activeScene  = 'fishing';
   worldScene?.destroy();
-  worldScene = null;
+  worldScene   = null;
   fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
-    if (result) {
-      showCatchToast(result.fish, result.weight);
-    }
-    startWorld(playerPos);
+    if (result) showCatchToast(result.fish, result.weight);
+    startWorld(worldState);
   });
   fishingScene.start(spot);
 }
@@ -123,6 +131,6 @@ function loop(timestamp) {
 }
 
 // ── Start ────────────────────────────────────────────────────────────────────
-startWorld();
+startWorld(null);
 document.getElementById('diag')?.remove();
 requestAnimationFrame(t => { lastTime = t; loop(t); });
