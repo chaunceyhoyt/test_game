@@ -39,7 +39,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    canvas {
+    #game {
       display: block;
       width: 100vw;
       height: 100vh;
@@ -368,13 +368,17 @@
     .char-preview-wrap {
       display: flex;
       justify-content: center;
-      padding: 10px 0 6px;
+      padding: 10px 0 10px;
     }
     .char-preview-canvas {
+      display: block;
+      width: 200px;
+      height: 175px;
       border-radius: 16px;
-      background: rgba(255,248,220,0.8);
+      background: rgba(255,248,220,0.85);
       border: 1.5px solid rgba(90,50,20,0.18);
       image-rendering: pixelated;
+      touch-action: auto;
     }
 
     .char-section {

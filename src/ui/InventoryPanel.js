@@ -148,7 +148,13 @@ export class InventoryPanel {
     const fur   = this.appearance?.furColor   ?? '#FFCC80';
     const shirt = this.appearance?.shirtColor ?? '#1976D2';
     const pants = this.appearance?.pantsColor ?? '#37474F';
-    const x = cw / 2, y = ch * 0.70;
+
+    // Draw at 3× scale so the character fills the preview nicely
+    const S = 3;
+    ctx.save();
+    ctx.scale(S, S);
+    const x = cw / (2 * S);       // ≈ 33  (canvas center in scaled coords)
+    const y = (ch * 0.62) / S;    // ≈ 36  (anchor point for character)
 
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
@@ -180,10 +186,6 @@ export class InventoryPanel {
     ctx.fillStyle = fur;
     ctx.beginPath(); ctx.arc(x, y - 9, 8, 0, Math.PI * 2); ctx.fill();
 
-    // Visor
-    ctx.fillStyle = '#2E7D32';
-    ctx.fillRect(Math.round(x) - 9, Math.round(y) - 15, 18, 3);
-
     // Eyes
     ctx.fillStyle = '#2d2d2d';
     ctx.beginPath(); ctx.ellipse(x - 3, y - 11, 2, 1.5, -0.25, 0, Math.PI * 2); ctx.fill();
@@ -207,6 +209,8 @@ export class InventoryPanel {
     ctx.strokeStyle = 'rgba(200,200,255,0.5)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x + 18, y - 18); ctx.lineTo(x + 22, y - 10); ctx.stroke();
     ctx.lineCap = 'butt';
+
+    ctx.restore();
   }
 
   // ── Render tabs ─────────────────────────────────────────────────────────────
@@ -359,7 +363,7 @@ export class InventoryPanel {
 
     return `
       <div class="char-preview-wrap">
-        <canvas id="char-preview" width="120" height="110" class="char-preview-canvas"></canvas>
+        <canvas id="char-preview" width="200" height="175" class="char-preview-canvas"></canvas>
       </div>
       <div class="char-section">
         <div class="char-label">🐱 Fur</div>

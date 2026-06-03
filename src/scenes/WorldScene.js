@@ -384,10 +384,6 @@ export class WorldScene {
     ctx.fillStyle = fur;
     ctx.beginPath(); ctx.arc(x, py - 9, 8, 0, Math.PI * 2); ctx.fill();
 
-    // Fishing visor (sits above ears, leaves ear tips visible)
-    ctx.fillStyle = '#2E7D32';
-    ctx.fillRect(Math.round(x) - 9, Math.round(py) - 15, 18, 3);
-
     // Eyes (slightly slanted for cat look)
     ctx.fillStyle = '#2d2d2d';
     ctx.beginPath(); ctx.ellipse(x - 3, py - 11, 2, 1.5, -0.25, 0, Math.PI * 2); ctx.fill();
