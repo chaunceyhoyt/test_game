@@ -104,6 +104,7 @@ export class FishingScene {
     }
 
     if (this.state === 'qte_hook') {
+      this._vibrate([70]); // solid hook-set thud
       this._beginReel();
       return;
     }
@@ -115,7 +116,8 @@ export class FishingScene {
         this.reelPos      = Math.min(1, this.reelPos + 0.20);
         this.jumpCooldown = this.jumpCooldownMax;
         this.jumpFlash    = 0.45;
-        this.lastTapTime  = 0; // reset so triple-tap doesn't re-trigger
+        this.lastTapTime  = 0;
+        this._vibrate([30]); // snappy little buzz
       } else {
         this.lastTapTime = now;
       }
@@ -148,6 +150,7 @@ export class FishingScene {
 
   _beginQteHook() {
     this.state = 'qte_hook';
+    this._vibrate([40, 25, 40]); // bite alert — two quick pulses
     const rarityBaseTime = { common: 3.0, uncommon: 2.2, rare: 1.5, epic: 1.0, legendary: 0.6 };
     const base      = rarityBaseTime[this.pendingFish?.rarity ?? 'common'] ?? 2.0;
     const polePower = this.inventory.getEquippedPole().power;
@@ -239,9 +242,16 @@ export class FishingScene {
     this.qteBoostFlash  = 0.9;
     this.secondaryMeter = 0.30;
 
-    if      (result === 'perfect') this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
-    else if (result === 'good')    this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
-    else                           this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
+    if (result === 'perfect') {
+      this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
+      this._vibrate([120]);           // long satisfying buzz
+    } else if (result === 'good') {
+      this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
+      this._vibrate([60]);            // medium buzz
+    } else {
+      this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
+      this._vibrate([30, 40, 30]);    // error rattle
+    }
 
     this.qteCount++;
     this._applyZoneWindow();
@@ -255,8 +265,10 @@ export class FishingScene {
       this.resultFish   = this.pendingFish;
       this.resultWeight = this.pendingWeight;
       this.inventory.addFish(this.pendingFish, this.pendingWeight);
+      this._vibrate([80, 40, 80, 40, 200]); // celebration pattern
     } else {
       this.resultFish = null;
+      this._vibrate([250]);                  // long sad buzz
     }
   }
 
@@ -542,18 +554,22 @@ export class FishingScene {
     const rarityColors = { common:'#9E9E9E', uncommon:'#4CAF50', rare:'#2196F3', epic:'#9C27B0', legendary:'#FF9800' };
     const rc = rarityColors[this.pendingFish?.rarity] ?? '#9E9E9E';
 
+    // ── Catch Progress — top of panel, prominent ──────────────
+    this._drawCatchProgressTop(px, py, pw, ph);
+
+    // ── Title + fish name ─────────────────────────────────────
     ctx.textAlign = 'center';
     ctx.fillStyle = '#2A1000';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('HOLD TO REEL IN!', cx, py + ph * 0.10);
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('HOLD TO REEL IN!', cx, py + ph * 0.24);
     ctx.fillStyle = rc;
-    ctx.font = '12px sans-serif';
-    ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + ph * 0.17);
+    ctx.font = '11px sans-serif';
+    ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + ph * 0.31);
 
     // ── Reel bar ──────────────────────────────────────────────
     const bw = pw * 0.82, bh = 22;
     const bx = px + (pw - bw) / 2;
-    const by = py + ph * 0.25;
+    const by = py + ph * 0.39;
 
     ctx.fillStyle = 'rgba(42,16,0,0.1)';
     this._roundRect(bx, by, bw, bh, 11); ctx.fill();
@@ -583,7 +599,7 @@ export class FishingScene {
 
     // ── Double-tap jump indicator ─────────────────────────────
     const jumpReady = this.jumpCooldown <= 0;
-    const jy        = py + ph * 0.375;
+    const jy        = py + ph * 0.52;
     const pillW     = 116, pillH = 16;
     const jpulse    = jumpReady ? 0.75 + Math.sin(this.t * 5) * 0.25 : 1;
 
@@ -604,28 +620,22 @@ export class FishingScene {
     ctx.font = 'bold 9px sans-serif';
     ctx.fillText('⚡ DOUBLE TAP TO JUMP', cx, jy + 3.5);
 
-    // Cooldown refill bar
     if (!jumpReady) {
       const cdProg = 1 - (this.jumpCooldown / this.jumpCooldownMax);
-      const cdW = 90;
-      const cdY = jy + pillH / 2 + 4;
+      const cdW = 90, cdY = jy + pillH / 2 + 4;
       ctx.fillStyle = 'rgba(42,16,0,0.08)';
       this._roundRect(cx - cdW / 2, cdY, cdW, 3, 2); ctx.fill();
       ctx.fillStyle = '#B8860B';
       this._roundRect(cx - cdW / 2, cdY, cdW * cdProg, 3, 2); ctx.fill();
     }
 
-    // ── Secondary meter (Line Tension) ────────────────────────
-    this._drawMeterBar(px, py, pw, ph, 0.44, this.secondaryMeter,
+    // ── Line Tension ──────────────────────────────────────────
+    this._drawMeterBar(px, py, pw, ph, 0.63, this.secondaryMeter,
       'LINE TENSION', '#4CAF50',
       this.secondaryMeter > 0.85 ? 'BOOST READY!' : null, '#3D7A1A');
 
-    // ── Primary meter (Catch Progress) ────────────────────────
-    this._drawMeterBar(px, py, pw, ph, 0.60, this.primaryMeter,
-      'CATCH PROGRESS', '#FF9800', null, null);
-
     // Fish silhouette
-    this._drawFishSilhouette(cx, py + ph * 0.82, 60, 30, rc, true);
+    this._drawFishSilhouette(cx, py + ph * 0.84, 60, 30, rc, true);
   }
 
   _drawQteBoost(px, py, pw, ph) {
@@ -678,8 +688,43 @@ export class FishingScene {
       ctx.fillText(inPerfect ? 'NOW!' : 'TAP!', cx, cy + innerRadius + 26);
     }
 
-    this._drawMeterBar(px, py, pw, ph, 0.70, this.secondaryMeter, 'LINE TENSION',   '#4CAF50', null, null);
-    this._drawMeterBar(px, py, pw, ph, 0.84, this.primaryMeter,   'CATCH PROGRESS', '#FF9800', null, null);
+    this._drawMeterBar(px, py, pw, ph, 0.78, this.secondaryMeter, 'LINE TENSION', '#4CAF50', null, null);
+    // Catch progress shown at top of panel (same as reel state)
+    this._drawCatchProgressTop(px, py, pw, ph);
+  }
+
+  _drawCatchProgressTop(px, py, pw, ph) {
+    const ctx = this.ctx;
+    const cpw = pw * 0.86, cph = 20;
+    const cpx = px + (pw - cpw) / 2;
+    const cpy = py + ph * 0.08;
+    const cpv = this.primaryMeter;
+    const cpColor = cpv > 0.7 ? '#C07020' : cpv > 0.35 ? '#B8860B' : '#888070';
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(42,16,0,0.55)';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText('CATCH PROGRESS', cpx, cpy - 5);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = cpColor;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`${Math.round(cpv * 100)}%`, cpx + cpw, cpy - 5);
+
+    ctx.fillStyle = 'rgba(42,16,0,0.12)';
+    this._roundRect(cpx, cpy, cpw, cph, 10); ctx.fill();
+    if (cpv > 0) {
+      ctx.fillStyle = cpColor;
+      this._roundRect(cpx, cpy, cpw * Math.min(1, cpv), cph, 10); ctx.fill();
+    }
+    const shine = ctx.createLinearGradient(cpx, cpy, cpx, cpy + cph);
+    shine.addColorStop(0,   'rgba(255,255,255,0.18)');
+    shine.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+    shine.addColorStop(1,   'rgba(0,0,0,0.08)');
+    ctx.fillStyle = shine;
+    this._roundRect(cpx, cpy, cpw, cph, 10); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,50,20,0.15)';
+    ctx.lineWidth = 1;
+    this._roundRect(cpx, cpy, cpw, cph, 10); ctx.stroke();
   }
 
   _drawMeterBar(px, py, pw, ph, yFraction, value, label, fillColor, hintText, hintColor) {
@@ -763,6 +808,10 @@ export class FishingScene {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  _vibrate(pattern) {
+    try { navigator.vibrate?.(pattern); } catch {}
+  }
 
   _roundRect(x, y, w, h, r) {
     const ctx = this.ctx;
