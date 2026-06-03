@@ -331,11 +331,11 @@ export class FishingScene {
       }
     }
 
-    // Panel — 114px bottom clearance covers 72px nav + 34px iPhone safe area + buffer
+    // Panel — 140px bottom clearance: 72px nav + up to 34px safe area + buffer
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
     const py = ch * 0.33;
-    const ph = ch - py - 114;
+    const ph = ch - py - 140;
     this._drawPanel(px, py, pw, ph);
 
     if (this.state === 'waiting')   this._drawWaiting(px, py, pw, ph);
