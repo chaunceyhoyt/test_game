@@ -332,7 +332,12 @@ export class FishingScene {
         this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * this.meterDrain);
       }
 
-      this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
+      // Catch progress: fills slowly when circle is in zone and player isn't touching
+      if (inZone && !this.reelHeld) {
+        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.06);
+      } else {
+        this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
+      }
 
       if (this.secondaryMeter <= 0)  { this._finishReel(false); return; }
       if (this.secondaryMeter >= 1)  { this._beginQteBoost();   return; }
@@ -575,7 +580,7 @@ export class FishingScene {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#2A1000';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('HOLD TO REEL IN!', cx, py + ph * 0.24);
+    ctx.fillText('HOLD TO REEL — RELEASE IN ZONE', cx, py + ph * 0.24);
     ctx.fillStyle = rc;
     ctx.font = '11px sans-serif';
     ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + ph * 0.31);
@@ -715,21 +720,34 @@ export class FishingScene {
     const cpv = this.primaryMeter;
     const cpColor = cpv > 0.7 ? '#C07020' : cpv > 0.35 ? '#B8860B' : '#888070';
 
+    const filling = this.state === 'reel'
+      && (this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax)
+      && !this.reelHeld;
+
     ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(42,16,0,0.55)';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.fillStyle = filling ? 'rgba(60,120,20,0.85)' : 'rgba(42,16,0,0.55)';
+    ctx.font = `bold 10px sans-serif`;
     ctx.fillText('CATCH PROGRESS', cpx, cpy - 5);
     ctx.textAlign = 'right';
-    ctx.fillStyle = cpColor;
+    ctx.fillStyle = filling ? '#3D7A1A' : cpColor;
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`${Math.round(cpv * 100)}%`, cpx + cpw, cpy - 5);
+    ctx.fillText(filling ? `▲ ${Math.round(cpv * 100)}%` : `${Math.round(cpv * 100)}%`, cpx + cpw, cpy - 5);
 
     ctx.fillStyle = 'rgba(42,16,0,0.12)';
     this._roundRect(cpx, cpy, cpw, cph, 10); ctx.fill();
     if (cpv > 0) {
-      ctx.fillStyle = cpColor;
+      ctx.fillStyle = filling ? '#4CAF50' : cpColor;
       this._roundRect(cpx, cpy, cpw * Math.min(1, cpv), cph, 10); ctx.fill();
     }
+
+    // Pulse glow when actively filling
+    if (filling && cpv > 0) {
+      const glow = 0.35 + Math.sin(this.t * 8) * 0.25;
+      ctx.strokeStyle = `rgba(60,180,60,${glow})`;
+      ctx.lineWidth = 3;
+      this._roundRect(cpx, cpy, cpw * Math.min(1, cpv), cph, 10); ctx.stroke();
+    }
+
     const shine = ctx.createLinearGradient(cpx, cpy, cpx, cpy + cph);
     shine.addColorStop(0,   'rgba(255,255,255,0.18)');
     shine.addColorStop(0.5, 'rgba(255,255,255,0.04)');
