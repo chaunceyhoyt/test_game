@@ -22,9 +22,15 @@ export class FishingScene {
     this.zoneMax         = 0.65;
     this.zoneDir         = 1;
     this.zoneSpeed       = 0.22;
-    this.zoneBaseSpeed   = 0.22;   // reference speed for burst resets
-    this.zoneSpeedModTimer = 0;    // countdown to next random burst
+    this.zoneBaseSpeed   = 0.22;
+    this.zoneSpeedModTimer = 0;
     this.reelHeld        = false;
+
+    // Double-tap jump
+    this.lastTapTime     = 0;
+    this.jumpCooldown    = 0;
+    this.jumpCooldownMax = 2.0;
+    this.jumpFlash       = 0;
 
     // Secondary meter (Line Tension) — fills in zone, drains out
     this.secondaryMeter = 0.5;
@@ -102,6 +108,20 @@ export class FishingScene {
       return;
     }
 
+    if (this.state === 'reel') {
+      const now = Date.now();
+      if (now - this.lastTapTime < 300 && this.jumpCooldown <= 0) {
+        // Double tap — burst the reel position forward
+        this.reelPos      = Math.min(1, this.reelPos + 0.20);
+        this.jumpCooldown = this.jumpCooldownMax;
+        this.jumpFlash    = 0.45;
+        this.lastTapTime  = 0; // reset so triple-tap doesn't re-trigger
+      } else {
+        this.lastTapTime = now;
+      }
+      return;
+    }
+
     if (this.state === 'qte_boost' && this.qteBoostResult === null) {
       const outerRadius = 85 * (1 - this.qteBoostTimer / this.qteBoostTotal);
       const diff        = Math.abs(outerRadius - 38);
@@ -142,6 +162,9 @@ export class FishingScene {
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
     this.qteCount       = 0;
+    this.lastTapTime    = 0; // prevent accidental jump from hook tap
+    this.jumpCooldown   = 0;
+    this.jumpFlash      = 0;
     this.inventory.useBait(); // consume bait on hook
 
     const rarity    = this.pendingFish?.rarity ?? 'common';
@@ -266,6 +289,10 @@ export class FishingScene {
         this.zoneSpeed         = this.zoneBaseSpeed * (0.35 + Math.random() * 1.7);
         this.zoneSpeedModTimer = 0.35 + Math.random() * 1.1;
       }
+
+      // Tick jump timers
+      if (this.jumpCooldown > 0) this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
+      if (this.jumpFlash    > 0) this.jumpFlash    = Math.max(0, this.jumpFlash    - dt * 2.5);
 
       // Hook: hold = reel right, release = fish pulls left
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
@@ -541,10 +568,52 @@ export class FishingScene {
 
     const hx     = bx + this.reelPos * bw;
     const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
+
+    // Jump flash ring
+    if (this.jumpFlash > 0) {
+      ctx.strokeStyle = `rgba(255,210,50,${this.jumpFlash * 2})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(hx, by + bh / 2, 10 + this.jumpFlash * 14, 0, Math.PI * 2); ctx.stroke();
+    }
+
     ctx.fillStyle = inZone ? '#FFEB3B' : '#EF5350';
     ctx.beginPath(); ctx.arc(hx, by + bh / 2, 10, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = inZone ? '#F9A825' : '#B71C1C';
     ctx.lineWidth = 2; ctx.stroke();
+
+    // ── Double-tap jump indicator ─────────────────────────────
+    const jumpReady = this.jumpCooldown <= 0;
+    const jy        = py + ph * 0.375;
+    const pillW     = 116, pillH = 16;
+    const jpulse    = jumpReady ? 0.75 + Math.sin(this.t * 5) * 0.25 : 1;
+
+    ctx.fillStyle = jumpReady
+      ? `rgba(200,150,20,${0.12 + 0.08 * jpulse})`
+      : 'rgba(42,16,0,0.06)';
+    this._roundRect(cx - pillW / 2, jy - pillH / 2, pillW, pillH, 8); ctx.fill();
+    ctx.strokeStyle = jumpReady
+      ? `rgba(200,150,20,${0.55 * jpulse})`
+      : 'rgba(42,16,0,0.12)';
+    ctx.lineWidth = 1;
+    this._roundRect(cx - pillW / 2, jy - pillH / 2, pillW, pillH, 8); ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = jumpReady
+      ? `rgba(140,80,0,${jpulse})`
+      : 'rgba(42,16,0,0.28)';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('⚡ DOUBLE TAP TO JUMP', cx, jy + 3.5);
+
+    // Cooldown refill bar
+    if (!jumpReady) {
+      const cdProg = 1 - (this.jumpCooldown / this.jumpCooldownMax);
+      const cdW = 90;
+      const cdY = jy + pillH / 2 + 4;
+      ctx.fillStyle = 'rgba(42,16,0,0.08)';
+      this._roundRect(cx - cdW / 2, cdY, cdW, 3, 2); ctx.fill();
+      ctx.fillStyle = '#B8860B';
+      this._roundRect(cx - cdW / 2, cdY, cdW * cdProg, 3, 2); ctx.fill();
+    }
 
     // ── Secondary meter (Line Tension) ────────────────────────
     this._drawMeterBar(px, py, pw, ph, 0.44, this.secondaryMeter,
