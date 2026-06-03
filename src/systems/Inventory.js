@@ -16,6 +16,11 @@ export class Inventory {
     ];
     this.equippedPoleId = 'old';
 
+    this.motors = [
+      { id: 'basic', name: 'Basic Motor', speed: 160, owned: false },
+    ];
+    this.equippedMotorId = null; // null = paddling (no motor)
+
     this.baits = [
       { id: 'worm',    name: 'Worm',          type: 'worm', count: 20 },
       { id: 'spinner', name: 'Spinner Lure',  type: 'lure', health: 10 },
@@ -24,8 +29,9 @@ export class Inventory {
 
     this.shopCatalog = [
       // equipment
-      { id: 'carbon_rod', tab: 'equipment', name: 'Carbon Rod',   desc: 'Faster reels, tighter zone', price: 120, type: 'pole',      poleId: 'carbon' },
-      { id: 'sail',       tab: 'equipment', name: 'Sail',          desc: 'Boosts fuel-less boat speed', price: 75,  type: 'sail' },
+      { id: 'carbon_rod',  tab: 'equipment', name: 'Carbon Rod',  desc: 'Faster reels, tighter zone',   price: 120, type: 'pole',  poleId: 'carbon' },
+      { id: 'basic_motor', tab: 'equipment', name: 'Basic Motor', desc: 'Motorized propulsion, uses fuel', price: 50, type: 'motor', motorId: 'basic' },
+      { id: 'sail',        tab: 'equipment', name: 'Sail',        desc: 'Boosts fuel-less boat speed',   price: 75,  type: 'sail' },
       // bait
       { id: 'worms_10',   tab: 'bait',      name: 'Worms ×10',    desc: '+10 worm bait',               price: 8,   type: 'bait_count', baitId: 'worm',    amount: 10 },
       { id: 'worms_25',   tab: 'bait',      name: 'Worms ×25',    desc: '+25 worm bait',               price: 18,  type: 'bait_count', baitId: 'worm',    amount: 25 },
@@ -45,6 +51,20 @@ export class Inventory {
     const pole = this.poles.find(p => p.id === id);
     if (pole?.owned) { this.equippedPoleId = id; this.save(); }
   }
+
+  // ── Motors ─────────────────────────────────────────────────────────────────
+
+  getEquippedMotor() {
+    if (!this.equippedMotorId) return null;
+    return this.motors.find(m => m.id === this.equippedMotorId) ?? null;
+  }
+
+  equipMotor(id) {
+    const motor = this.motors.find(m => m.id === id);
+    if (motor?.owned) { this.equippedMotorId = id; this.save(); }
+  }
+
+  unequipMotor() { this.equippedMotorId = null; this.save(); }
 
   getEquippedPole() {
     return this.poles.find(p => p.id === this.equippedPoleId) ?? this.poles[0];
@@ -145,6 +165,10 @@ export class Inventory {
     if (item.type === 'sail' && this.hasSail) {
       return { success: false, reason: 'already_owned' };
     }
+    if (item.type === 'motor') {
+      const motor = this.motors.find(m => m.id === item.motorId);
+      if (motor?.owned) return { success: false, reason: 'already_owned' };
+    }
 
     this.money -= item.price;
 
@@ -152,6 +176,11 @@ export class Inventory {
       case 'pole': {
         const pole = this.poles.find(p => p.id === item.poleId);
         if (pole) pole.owned = true;
+        break;
+      }
+      case 'motor': {
+        const motor = this.motors.find(m => m.id === item.motorId);
+        if (motor) motor.owned = true;
         break;
       }
       case 'sail':
@@ -192,6 +221,8 @@ export class Inventory {
         equippedPoleId: this.equippedPoleId,
         equippedBaitId: this.equippedBaitId,
         poleStates:     this.poles.map(p => ({ id: p.id, owned: p.owned })),
+        motorStates:    this.motors.map(m => ({ id: m.id, owned: m.owned })),
+        equippedMotorId: this.equippedMotorId,
         baitStates:     this.baits.map(b => ({ id: b.id, count: b.count, health: b.health })),
       }));
     } catch {}
@@ -208,6 +239,14 @@ export class Inventory {
       this.fishLog        = d.fishLog        ?? {};
       this.equippedPoleId = d.equippedPoleId ?? 'old';
       this.equippedBaitId = d.equippedBaitId ?? 'worm';
+
+      this.equippedMotorId = d.equippedMotorId ?? null;
+      if (d.motorStates) {
+        for (const s of d.motorStates) {
+          const motor = this.motors.find(m => m.id === s.id);
+          if (motor && s.owned !== undefined) motor.owned = s.owned;
+        }
+      }
 
       if (d.poleStates) {
         for (const s of d.poleStates) {

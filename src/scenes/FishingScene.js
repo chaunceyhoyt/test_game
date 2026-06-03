@@ -54,6 +54,8 @@ export class FishingScene {
     this.pendingWeight = 0;
     this.resultFish    = null;
     this.resultWeight  = 0;
+    this.resultValue   = 0;
+    this.resultStars   = 1;
     this.resultTimer   = 0;
     this.escaped       = false;
 
@@ -70,8 +72,7 @@ export class FishingScene {
 
   start(spot) {
     this.spot = spot;
-    this._selectFish();
-    this._beginWait();
+    this._beginWait(); // _beginWait now calls _selectFish so fish re-randomizes each attempt
   }
 
   _selectFish() {
@@ -152,6 +153,7 @@ export class FishingScene {
   // ── State transitions ──────────────────────────────────────────────────────
 
   _beginWait() {
+    this._selectFish(); // re-randomize fish each attempt (miss = new fish)
     this.state     = 'waiting';
     this.waitMax   = 2.0 + Math.random() * 4.0;
     this.waitTimer = 0;
@@ -163,7 +165,8 @@ export class FishingScene {
     const rarityBaseTime = { common: 3.0, uncommon: 2.2, rare: 1.5, epic: 1.0, legendary: 0.6 };
     const base      = rarityBaseTime[this.pendingFish?.rarity ?? 'common'] ?? 2.0;
     const polePower = this.inventory.getEquippedPole().power;
-    this.qteTotalTime = base + (polePower - 1) * 0.5;
+    const jitter    = (Math.random() - 0.5) * 1.0; // ±0.5 s random variation
+    this.qteTotalTime = Math.max(0.5, base + (polePower - 1) * 0.5 + jitter);
     this.qteTimer     = this.qteTotalTime;
   }
 
@@ -273,7 +276,9 @@ export class FishingScene {
     if (caught && this.pendingFish) {
       this.resultFish   = this.pendingFish;
       this.resultWeight = this.pendingWeight;
-      this.inventory.addFish(this.pendingFish, this.pendingWeight);
+      const entry       = this.inventory.addFish(this.pendingFish, this.pendingWeight);
+      this.resultValue  = entry.value;
+      this.resultStars  = entry.stars;
       this._pendingVibrate = [120, 60, 120, 60, 300]; // queued — fires on result tap
     } else {
       this.resultFish = null;
@@ -802,11 +807,15 @@ export class FishingScene {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillText(this.resultFish.rarity.toUpperCase(), cx, py + ph * 0.52);
 
-      ctx.fillStyle = '#7B4A00';
-      ctx.font = 'bold 15px sans-serif';
-      ctx.fillText(`⚖️ ${this.resultWeight} lbs  |  💰 ${Math.round(this.resultFish.value)} coins`, cx, py + ph * 0.62);
+      ctx.fillStyle = '#C07020';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('★'.repeat(this.resultStars) + '☆'.repeat(3 - this.resultStars), cx, py + ph * 0.62);
 
-      this._drawFishSilhouette(cx, py + ph * 0.78, 80, 40, this.resultFish.color, true);
+      ctx.fillStyle = '#7B4A00';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(`⚖️ ${this.resultWeight} lbs · 💰 $${this.resultValue}`, cx, py + ph * 0.72);
+
+      this._drawFishSilhouette(cx, py + ph * 0.85, 80, 40, this.resultFish.color, true);
 
       ctx.globalAlpha = Math.max(0, this.resultTimer - 0.8);
       ctx.fillStyle = 'rgba(42,16,0,0.5)';

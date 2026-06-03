@@ -384,6 +384,14 @@ export class WorldScene {
     }
   }
 
+  _isBoatPassable(x, y) {
+    if (y >= this.waterY - 3) return false;
+    if (y < 5) return false;
+    if (x < 5 || x > this.canvas.width - 5) return false;
+    if (y >= this.dockY && x >= this.dockLeft && x <= this.dockRight) return false;
+    return true;
+  }
+
   _updateBoat(dt) {
     if (!this.playerOnBoat || !this._boatTarget) return;
 
@@ -392,19 +400,25 @@ export class WorldScene {
     const dy  = this._boatTarget.y - b.y;
     const dist = Math.hypot(dx, dy);
 
+    const motor   = this.inventory?.getEquippedMotor?.();
     const hasFuel = (this.inventory?.fuel ?? 0) > 0;
-    const speed   = hasFuel
-      ? 160
-      : (this.inventory?.hasSail ? 80 : 35);
+    const speed   = motor
+      ? (hasFuel ? 160 : (this.inventory?.hasSail ? 80 : 35))
+      : 25; // paddling — slow, no fuel use
 
     if (dist > 6) {
       const step = Math.min(dist, speed * dt);
-      b.x += (dx / dist) * step;
-      b.y += (dy / dist) * step;
+      const nx = b.x + (dx / dist) * step;
+      const ny = b.y + (dy / dist) * step;
+
+      if      (this._isBoatPassable(nx, ny))   { b.x = nx; b.y = ny; }
+      else if (this._isBoatPassable(nx, b.y))  { b.x = nx; }
+      else if (this._isBoatPassable(b.x, ny))  { b.y = ny; }
+
       b.heading = Math.atan2(dy, dx);
 
-      // Burn fuel while motoring
-      if (hasFuel && this.inventory) {
+      // Only burn fuel when motor is equipped and fueled
+      if (motor && hasFuel && this.inventory) {
         this.inventory.fuel = Math.max(0, this.inventory.fuel - FUEL_DRAIN * dt);
       }
     } else {
@@ -503,7 +517,11 @@ export class WorldScene {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(fuel <= 0 && this.inventory?.hasSail ? '⛵ SAILING' : `⛽ ${Math.ceil(fuel)}/${max}`, bx + bw / 2, by - 1);
+    const motor = this.inventory?.getEquippedMotor?.();
+    const label = !motor ? '🚣 PADDLING'
+      : (fuel <= 0 && this.inventory?.hasSail) ? '⛵ SAILING'
+      : `⛽ ${Math.ceil(fuel)}/${max}`;
+    ctx.fillText(label, bx + bw / 2, by - 1);
   }
 
   _drawSky(cw, ch) {
@@ -662,6 +680,9 @@ export class WorldScene {
   _drawBoat() {
     const ctx = this.ctx;
     const { x, y, heading } = this.boat;
+    const hullColor  = this.appearance?.boatColor ?? '#6D4C2A';
+    // Lighten hull color slightly for deck by blending with white
+    const motor = this.inventory?.getEquippedMotor?.();
 
     ctx.save();
     ctx.translate(x, y);
@@ -672,22 +693,30 @@ export class WorldScene {
     ctx.beginPath(); ctx.ellipse(2, 4, 10, 18, 0, 0, Math.PI * 2); ctx.fill();
 
     // Hull
-    ctx.fillStyle = '#6D4C2A';
+    ctx.fillStyle = hullColor;
     ctx.beginPath(); ctx.ellipse(0, 0, 10, 18, 0, 0, Math.PI * 2); ctx.fill();
 
-    // Deck
-    ctx.fillStyle = '#A0824C';
+    // Deck (slightly lighter overlay)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.beginPath(); ctx.ellipse(0, -1, 7, 13, 0, 0, Math.PI * 2); ctx.fill();
 
     // Bow stripe
     ctx.fillStyle = '#C8A87A';
     ctx.fillRect(-3, -16, 6, 4);
 
-    // Cabin (stern side)
-    ctx.fillStyle = '#7B5230';
-    ctx.fillRect(-5, 5, 10, 9);
-    ctx.fillStyle = '#5C3D1E';
-    ctx.fillRect(-5, 5, 10, 3);
+    // Stern — motor or oars
+    if (motor) {
+      ctx.fillStyle = '#444';
+      ctx.fillRect(-4, 8, 8, 8);  // motor block
+      ctx.fillStyle = '#888';
+      ctx.fillRect(-1, 14, 2, 6); // prop shaft
+    } else {
+      // Oars (two diagonal lines)
+      ctx.strokeStyle = 'rgba(180,130,80,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-8, 4); ctx.lineTo(-2, 14); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo( 8, 4); ctx.lineTo( 2, 14); ctx.stroke();
+    }
 
     // Sail (if owned)
     if (this.inventory?.hasSail) {

@@ -274,10 +274,9 @@ export class ShopPanel {
   }
 
   _isOwned(item) {
-    if (item.type === 'pole') {
-      return this.inventory.poles.find(p => p.id === item.poleId)?.owned ?? false;
-    }
-    if (item.type === 'sail') return this.inventory.hasSail;
+    if (item.type === 'pole')  return this.inventory.poles.find(p => p.id === item.poleId)?.owned ?? false;
+    if (item.type === 'sail')  return this.inventory.hasSail;
+    if (item.type === 'motor') return this.inventory.motors?.find(m => m.id === item.motorId)?.owned ?? false;
     return false; // consumables are never "owned"
   }
 

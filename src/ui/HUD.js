@@ -36,7 +36,7 @@ export class HUD {
   update() {
     document.querySelector('#hud-money span').textContent = `$${this.inventory.money}`;
     document.querySelector('#hud-fuel span').textContent =
-      `${this.inventory.fuel}/${this.inventory.maxFuel}`;
+      `${Math.ceil(this.inventory.fuel)}/${this.inventory.maxFuel}`;
     document.getElementById('hud-time').textContent = this.gameTime.displayTime;
 
     const seasonIcons = { spring: '🌸', summer: '☀️', fall: '🍂', winter: '❄️' };

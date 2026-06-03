@@ -47,6 +47,7 @@ export class InventoryPanel {
         <button class="tab-btn active" data-tab="fish">🐟 Fish</button>
         <button class="tab-btn" data-tab="equipment">🎣 Gear</button>
         <button class="tab-btn" data-tab="dex">📖 FishDex</button>
+        <button class="tab-btn" data-tab="boat">⛵ Boat</button>
         <button class="tab-btn" data-tab="look">🐱 Look</button>
       </div>
       <div id="panel-content" class="panel-content"></div>
@@ -90,21 +91,8 @@ export class InventoryPanel {
     if (this.activeTab === 'fish')      el.innerHTML = this._renderFish();
     if (this.activeTab === 'equipment') el.innerHTML = this._renderEquipment();
     if (this.activeTab === 'dex')       el.innerHTML = this._renderDex();
+    if (this.activeTab === 'boat')      el.innerHTML = this._renderBoat();
     if (this.activeTab === 'look')      el.innerHTML = this._renderLook();
-
-    // Sell individual
-    el.querySelectorAll('.sell-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.inventory.sellFish(+btn.dataset.index);
-        this._render();
-      });
-    });
-
-    // Sell all
-    el.querySelector('#sell-all')?.addEventListener('click', () => {
-      while (this.inventory.caughtFish.length) this.inventory.sellFish(0);
-      this._render();
-    });
 
     // Equip pole
     el.querySelectorAll('.equip-btn[data-pole]').forEach(btn => {
@@ -122,7 +110,23 @@ export class InventoryPanel {
       });
     });
 
-    // Color swatches
+    // Equip motor
+    el.querySelectorAll('.equip-btn[data-motor]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.inventory.equipMotor(btn.dataset.motor);
+        this._render();
+      });
+    });
+
+    // Unequip motor (paddle mode)
+    el.querySelectorAll('[data-motor-unequip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.inventory.unequipMotor();
+        this._render();
+      });
+    });
+
+    // Color swatches (handles boatColor, furColor, etc.)
     el.querySelectorAll('.swatch').forEach(btn => {
       btn.addEventListener('click', () => {
         this.appearance?.set(btn.dataset.key, btn.dataset.value);
@@ -244,14 +248,16 @@ export class InventoryPanel {
     }
     const totalValue = caughtFish.reduce((s, f) => s + f.value, 0);
     let html = `<div class="fish-summary">
-      ${caughtFish.length} fish — Total value: <strong>$${totalValue}</strong>
-      <button class="sell-all-btn" id="sell-all">Sell All</button>
+      ${caughtFish.length} fish &nbsp;·&nbsp; Bag value: <strong>$${totalValue}</strong>
+      <span style="font-size:11px;color:var(--text-dim);margin-left:auto">Sell at Shop</span>
     </div>`;
 
-    caughtFish.forEach((entry, i) => {
-      const fish = this.fishDb.getById(entry.fishId);
-      const rc = this._rarityColor(fish?.rarity ?? 'common');
-      const icon = fish ? this._fishIcon(fish, true) : '';
+    caughtFish.forEach((entry) => {
+      const fish    = this.fishDb.getById(entry.fishId);
+      const rc      = this._rarityColor(fish?.rarity ?? 'common');
+      const icon    = fish ? this._fishIcon(fish, true) : '';
+      const stars   = entry.stars ?? 0;
+      const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
       html += `
         <div class="fish-card">
           <img src="${icon}" class="fish-icon-img" alt="${entry.name}">
@@ -262,8 +268,8 @@ export class InventoryPanel {
             </div>
           </div>
           <div class="fish-value">
+            <div class="fish-coins" style="color:#C07020;letter-spacing:1px">${starStr}</div>
             <div class="fish-coins">💰 $${entry.value}</div>
-            <button class="sell-btn" data-index="${i}">Sell</button>
           </div>
         </div>`;
     });
@@ -271,10 +277,13 @@ export class InventoryPanel {
   }
 
   _renderEquipment() {
-    const poles      = this.inventory.poles;
+    const poles      = this.inventory.poles.filter(p => p.owned);
     const baits      = this.inventory.baits;
     const equippedId = this.inventory.equippedPoleId;
     let html = `<div class="equip-section"><div class="equip-header">🎣 Fishing Poles</div>`;
+    if (!poles.length) {
+      html += `<div class="empty-msg" style="padding:16px 0;font-size:13px">No poles owned — visit the Shop!</div>`;
+    }
     for (const p of poles) {
       const isEquipped = p.id === equippedId;
       html += `<div class="equip-card">
@@ -381,5 +390,79 @@ export class InventoryPanel {
     `;
   }
 
+  _renderBoat() {
+    const a = this.appearance;
+    const motors         = this.inventory.motors ?? [];
+    const equippedMotorId = this.inventory.equippedMotorId;
+    const isPaddling     = equippedMotorId == null;
+
+    const boatColors = [
+      { label: 'Oak',      value: '#8B6340' },
+      { label: 'Mahogany', value: '#5C2E00' },
+      { label: 'Teak',     value: '#C4863C' },
+      { label: 'Ebony',    value: '#2D1A0A' },
+      { label: 'Navy',     value: '#1A3A6B' },
+      { label: 'Forest',   value: '#2E5A2E' },
+      { label: 'Crimson',  value: '#8B1A1A' },
+      { label: 'White',    value: '#F0EEE8' },
+    ];
+
+    const swatchRow = (key, colors, current) =>
+      `<div class="swatch-row">${colors.map(c => {
+        const sel = c.value.toLowerCase() === (current ?? '').toLowerCase();
+        return `<button class="swatch${sel ? ' swatch-selected' : ''}"
+          style="background:${c.value}"
+          data-key="${key}" data-value="${c.value}"
+          title="${c.label}"></button>`;
+      }).join('')}</div>`;
+
+    let html = `
+      <div class="char-section">
+        <div class="char-label">🎨 Hull Color</div>
+        ${swatchRow('boatColor', boatColors, a?.boatColor)}
+      </div>
+      <div class="equip-section">
+        <div class="equip-header">⚙️ Motor</div>
+        <div class="equip-card">
+          <span class="equip-icon">🚣</span>
+          <div class="equip-info">
+            <div class="equip-name">None (Paddle)</div>
+            <div class="equip-stat">Very slow &nbsp;·&nbsp; No fuel use</div>
+          </div>
+          <div class="equip-actions">
+            ${isPaddling
+              ? `<span class="equip-badge">Active</span>`
+              : `<button class="equip-btn" data-motor-unequip="1">Select</button>`}
+          </div>
+        </div>`;
+
+    const ownedMotors = motors.filter(m => m.owned);
+    for (const m of ownedMotors) {
+      const isEquipped = m.id === equippedMotorId;
+      html += `<div class="equip-card">
+        <span class="equip-icon">⚙️</span>
+        <div class="equip-info">
+          <div class="equip-name">${m.name}</div>
+          <div class="equip-stat">Speed: ${m.speed} px/s &nbsp;·&nbsp; Uses fuel</div>
+        </div>
+        <div class="equip-actions">
+          ${isEquipped
+            ? `<span class="equip-badge">Equipped</span>`
+            : `<button class="equip-btn" data-motor="${m.id}">Equip</button>`}
+        </div>
+      </div>`;
+    }
+
+    if (!ownedMotors.length) {
+      html += `<div style="font-size:12px;color:var(--text-dim);padding:8px 4px;font-style:italic">
+        No motors owned — buy one at the Shop!
+      </div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
   destroy() { this.el.remove(); }
 }
+

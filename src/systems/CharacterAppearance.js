@@ -4,6 +4,7 @@ export const DEFAULTS = {
   furColor:   '#FFCC80',
   shirtColor: '#1976D2',
   pantsColor: '#37474F',
+  boatColor:  '#8B6340',
 };
 
 export class CharacterAppearance {
@@ -11,6 +12,7 @@ export class CharacterAppearance {
     this.furColor   = DEFAULTS.furColor;
     this.shirtColor = DEFAULTS.shirtColor;
     this.pantsColor = DEFAULTS.pantsColor;
+    this.boatColor  = DEFAULTS.boatColor;
     this.load();
   }
 
@@ -25,6 +27,7 @@ export class CharacterAppearance {
         furColor:   this.furColor,
         shirtColor: this.shirtColor,
         pantsColor: this.pantsColor,
+        boatColor:  this.boatColor,
       }));
     } catch {}
   }
@@ -36,6 +39,8 @@ export class CharacterAppearance {
       this.furColor   = d.furColor   ?? DEFAULTS.furColor;
       this.shirtColor = d.shirtColor ?? DEFAULTS.shirtColor;
       this.pantsColor = d.pantsColor ?? DEFAULTS.pantsColor;
+      this.boatColor  = d.boatColor  ?? DEFAULTS.boatColor;
     } catch {}
   }
 }
+
