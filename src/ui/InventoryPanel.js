@@ -1,9 +1,43 @@
+const FUR_COLORS = [
+  { label: 'Sandy',    value: '#FFCC80' },
+  { label: 'Cream',    value: '#FFEECB' },
+  { label: 'White',    value: '#F0F0EE' },
+  { label: 'Silver',   value: '#BDBDBD' },
+  { label: 'Orange',   value: '#FF8C00' },
+  { label: 'Ginger',   value: '#C05C08' },
+  { label: 'Brown',    value: '#8D5524' },
+  { label: 'Midnight', value: '#2D2D2D' },
+];
+
+const SHIRT_COLORS = [
+  { label: 'Blue',   value: '#1976D2' },
+  { label: 'Red',    value: '#C62828' },
+  { label: 'Forest', value: '#2E7D32' },
+  { label: 'Purple', value: '#6A1B9A' },
+  { label: 'Teal',   value: '#00695C' },
+  { label: 'Ember',  value: '#E64A19' },
+  { label: 'Rose',   value: '#C2185B' },
+  { label: 'Gold',   value: '#F9A825' },
+];
+
+const PANTS_COLORS = [
+  { label: 'Slate',   value: '#37474F' },
+  { label: 'Navy',    value: '#1A237E' },
+  { label: 'Walnut',  value: '#4E342E' },
+  { label: 'Olive',   value: '#558B2F' },
+  { label: 'Crimson', value: '#880E4F' },
+  { label: 'Tan',     value: '#A1887F' },
+  { label: 'Onyx',    value: '#212121' },
+  { label: 'Ash',     value: '#616161' },
+];
+
 export class InventoryPanel {
-  constructor(inventory, fishDb) {
-    this.inventory = inventory;
-    this.fishDb    = fishDb;
-    this.activeTab = 'fish';
-    this.isOpen    = false;
+  constructor(inventory, fishDb, appearance) {
+    this.inventory  = inventory;
+    this.fishDb     = fishDb;
+    this.appearance = appearance;
+    this.activeTab  = 'fish';
+    this.isOpen     = false;
 
     this.el = document.createElement('div');
     this.el.id = 'inventory-panel';
@@ -13,24 +47,22 @@ export class InventoryPanel {
         <button class="tab-btn active" data-tab="fish">🐟 Fish</button>
         <button class="tab-btn" data-tab="equipment">🎣 Gear</button>
         <button class="tab-btn" data-tab="dex">📖 FishDex</button>
+        <button class="tab-btn" data-tab="look">🐱 Look</button>
       </div>
       <div id="panel-content" class="panel-content"></div>
     `;
     document.body.appendChild(this.el);
 
-    // Tab switching
     this.el.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => this._switchTab(btn.dataset.tab));
     });
 
-    // Close on background tap (swipe down)
     let startY = 0;
     this.el.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
     this.el.addEventListener('touchend', e => {
       if (e.changedTouches[0].clientY - startY > 60) this.close();
     }, { passive: true });
 
-    // Close button via handle double-tap
     this.el.querySelector('.panel-handle').addEventListener('click', () => this.close());
   }
 
@@ -58,6 +90,7 @@ export class InventoryPanel {
     if (this.activeTab === 'fish')      el.innerHTML = this._renderFish();
     if (this.activeTab === 'equipment') el.innerHTML = this._renderEquipment();
     if (this.activeTab === 'dex')       el.innerHTML = this._renderDex();
+    if (this.activeTab === 'look')      el.innerHTML = this._renderLook();
 
     // Sell individual
     el.querySelectorAll('.sell-btn').forEach(btn => {
@@ -88,24 +121,108 @@ export class InventoryPanel {
         this._render();
       });
     });
+
+    // Color swatches
+    el.querySelectorAll('.swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.appearance?.set(btn.dataset.key, btn.dataset.value);
+        this._render();
+        requestAnimationFrame(() => this._drawPreview());
+      });
+    });
+
+    if (this.activeTab === 'look') {
+      requestAnimationFrame(() => this._drawPreview());
+    }
   }
+
+  // ── Character preview canvas ────────────────────────────────────────────────
+
+  _drawPreview() {
+    const canvas = document.getElementById('char-preview');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cw = canvas.width, ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+
+    const fur   = this.appearance?.furColor   ?? '#FFCC80';
+    const shirt = this.appearance?.shirtColor ?? '#1976D2';
+    const pants = this.appearance?.pantsColor ?? '#37474F';
+    const x = cw / 2, y = ch * 0.70;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.ellipse(x, y + 14, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Tail
+    ctx.strokeStyle = fur; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 5, y + 5); ctx.quadraticCurveTo(x - 20, y - 2, x - 18, y - 12); ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Legs
+    ctx.fillStyle = pants;
+    ctx.fillRect(Math.round(x) - 6, Math.round(y) + 6, 5, 8);
+    ctx.fillRect(Math.round(x) + 1, Math.round(y) + 6, 5, 8);
+
+    // Shirt
+    ctx.fillStyle = shirt;
+    ctx.fillRect(Math.round(x) - 7, Math.round(y) - 3, 14, 10);
+
+    // Ears
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.moveTo(x - 7, y - 13); ctx.lineTo(x - 4, y - 22); ctx.lineTo(x - 1, y - 13); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + 1, y - 13); ctx.lineTo(x + 4, y - 22); ctx.lineTo(x + 7, y - 13); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FF8FAB';
+    ctx.beginPath(); ctx.moveTo(x - 6, y - 14); ctx.lineTo(x - 4, y - 20); ctx.lineTo(x - 2, y - 14); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + 2, y - 14); ctx.lineTo(x + 4, y - 20); ctx.lineTo(x + 6, y - 14); ctx.closePath(); ctx.fill();
+
+    // Head
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.arc(x, y - 9, 8, 0, Math.PI * 2); ctx.fill();
+
+    // Visor
+    ctx.fillStyle = '#2E7D32';
+    ctx.fillRect(Math.round(x) - 9, Math.round(y) - 15, 18, 3);
+
+    // Eyes
+    ctx.fillStyle = '#2d2d2d';
+    ctx.beginPath(); ctx.ellipse(x - 3, y - 11, 2, 1.5, -0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 3, y - 11, 2, 1.5,  0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(x - 2.2, y - 11.5, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 3.8, y - 11.5, 0.8, 0, Math.PI * 2); ctx.fill();
+
+    // Nose + whiskers
+    ctx.fillStyle = '#FF8FAB';
+    ctx.beginPath(); ctx.arc(x, y - 7.5, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(80,40,0,0.35)';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(x - 5 - i * 1.8, y - 7.5, 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 5 + i * 1.8, y - 7.5, 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Rod
+    ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x + 6, y - 2); ctx.lineTo(x + 18, y - 18); ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,200,255,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x + 18, y - 18); ctx.lineTo(x + 22, y - 10); ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // ── Render tabs ─────────────────────────────────────────────────────────────
 
   _rarityColor(r) {
     return { common:'#9E9E9E', uncommon:'#4CAF50', rare:'#2196F3', epic:'#9C27B0', legendary:'#FF9800' }[r] ?? '#9E9E9E';
   }
 
   _fishIcon(fish, caught) {
-    // Small canvas-rendered fish icon as data URL
     const c = document.createElement('canvas');
     c.width = 48; c.height = 48;
     const ctx = c.getContext('2d');
     const color = caught ? fish.color : '#444';
-    // Body
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.ellipse(20, 24, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-    // Tail
     ctx.beginPath(); ctx.moveTo(32, 24); ctx.lineTo(44, 14); ctx.lineTo(44, 34); ctx.closePath(); ctx.fill();
-    // Dorsal
     ctx.beginPath(); ctx.moveTo(14, 14); ctx.lineTo(22, 6); ctx.lineTo(28, 14); ctx.closePath(); ctx.fill();
     if (caught) {
       ctx.fillStyle = '#fff';
@@ -146,7 +263,6 @@ export class InventoryPanel {
           </div>
         </div>`;
     });
-
     return html;
   }
 
@@ -199,7 +315,6 @@ export class InventoryPanel {
   _renderDex() {
     const allFish = this.fishDb.getAll();
     const caught  = allFish.filter(f =>  this.inventory.hasCaught(f.id));
-    const missing = allFish.filter(f => !this.inventory.hasCaught(f.id));
 
     let html = `<div class="dex-summary">
       <span class="dex-count">${caught.length} / ${allFish.length}</span>
@@ -227,6 +342,39 @@ export class InventoryPanel {
     }
     html += `</div>`;
     return html;
+  }
+
+  _renderLook() {
+    const a = this.appearance;
+    if (!a) return `<div class="empty-msg">Customization unavailable</div>`;
+
+    const swatchRow = (key, colors, current) =>
+      `<div class="swatch-row">${colors.map(c => {
+        const sel = c.value.toLowerCase() === (current ?? '').toLowerCase();
+        return `<button class="swatch${sel ? ' swatch-selected' : ''}"
+          style="background:${c.value}"
+          data-key="${key}" data-value="${c.value}"
+          title="${c.label}"></button>`;
+      }).join('')}</div>`;
+
+    return `
+      <div class="char-preview-wrap">
+        <canvas id="char-preview" width="120" height="110" class="char-preview-canvas"></canvas>
+      </div>
+      <div class="char-section">
+        <div class="char-label">🐱 Fur</div>
+        ${swatchRow('furColor', FUR_COLORS, a.furColor)}
+      </div>
+      <div class="char-section">
+        <div class="char-label">👕 Shirt</div>
+        ${swatchRow('shirtColor', SHIRT_COLORS, a.shirtColor)}
+      </div>
+      <div class="char-section">
+        <div class="char-label">👖 Pants</div>
+        ${swatchRow('pantsColor', PANTS_COLORS, a.pantsColor)}
+      </div>
+      <div class="char-hint">More options coming — accessories &amp; hats soon!</div>
+    `;
   }
 
   destroy() { this.el.remove(); }

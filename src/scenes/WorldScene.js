@@ -1,9 +1,10 @@
 export class WorldScene {
-  constructor(canvas, gameTime, onStartFishing, startPos = null) {
+  constructor(canvas, gameTime, onStartFishing, startPos = null, appearance = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.gameTime = gameTime;
     this.onStartFishing = onStartFishing;
+    this.appearance = appearance;
 
     this.player = { x: 0, y: 0, tx: 0, ty: 0, speed: 130, state: 'idle', pendingSpot: null };
     this.ripples = [];
@@ -343,12 +344,16 @@ export class WorldScene {
     const bounce = state === 'walking' ? Math.sin(this.t * 8) * 2 : 0;
     const py = y + bounce;
 
+    const fur   = this.appearance?.furColor   ?? '#FFCC80';
+    const shirt = this.appearance?.shirtColor ?? '#1976D2';
+    const pants = this.appearance?.pantsColor ?? '#37474F';
+
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.beginPath(); ctx.ellipse(x, y + 14, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
 
     // Tail
-    ctx.strokeStyle = '#FFCC80';
+    ctx.strokeStyle = fur;
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -358,25 +363,25 @@ export class WorldScene {
     ctx.lineCap = 'butt';
 
     // Legs
-    ctx.fillStyle = '#37474F';
+    ctx.fillStyle = pants;
     ctx.fillRect(Math.round(x) - 6, Math.round(py) + 6, 5, 8);
     ctx.fillRect(Math.round(x) + 1, Math.round(py) + 6, 5, 8);
 
     // Body / shirt
-    ctx.fillStyle = '#1976D2';
+    ctx.fillStyle = shirt;
     ctx.fillRect(Math.round(x) - 7, Math.round(py) - 3, 14, 10);
 
     // Cat ears (behind head)
-    ctx.fillStyle = '#FFCC80';
+    ctx.fillStyle = fur;
     ctx.beginPath(); ctx.moveTo(x - 7, py - 13); ctx.lineTo(x - 4, py - 22); ctx.lineTo(x - 1, py - 13); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x + 1, py - 13); ctx.lineTo(x + 4, py - 22); ctx.lineTo(x + 7, py - 13); ctx.closePath(); ctx.fill();
-    // Inner ear
+    // Inner ear (always pink)
     ctx.fillStyle = '#FF8FAB';
     ctx.beginPath(); ctx.moveTo(x - 6, py - 14); ctx.lineTo(x - 4, py - 20); ctx.lineTo(x - 2, py - 14); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(x + 2, py - 14); ctx.lineTo(x + 4, py - 20); ctx.lineTo(x + 6, py - 14); ctx.closePath(); ctx.fill();
 
     // Head
-    ctx.fillStyle = '#FFCC80';
+    ctx.fillStyle = fur;
     ctx.beginPath(); ctx.arc(x, py - 9, 8, 0, Math.PI * 2); ctx.fill();
 
     // Fishing visor (sits above ears, leaves ear tips visible)

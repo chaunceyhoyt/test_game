@@ -364,6 +364,59 @@
     }
     .empty-msg span { font-size: 14px; }
 
+    /* ── Character Customizer ─────────────────────────────── */
+    .char-preview-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0 6px;
+    }
+    .char-preview-canvas {
+      border-radius: 16px;
+      background: rgba(255,248,220,0.8);
+      border: 1.5px solid rgba(90,50,20,0.18);
+      image-rendering: pixelated;
+    }
+
+    .char-section {
+      margin-bottom: 16px;
+    }
+    .char-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(42,16,0,0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s;
+      outline: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .swatch:active { transform: scale(0.85); }
+    .swatch-selected {
+      border-color: #2A1000;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.75), 0 1px 4px rgba(0,0,0,0.22);
+    }
+    .char-hint {
+      font-size: 11px;
+      color: rgba(42,16,0,0.4);
+      text-align: center;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
     /* ── Catch Toast ───────────────────────────────────────── */
     .catch-toast {
       position: fixed;

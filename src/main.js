@@ -36,27 +36,29 @@ window.addEventListener('error', (e) => {
   canvas.onclick = () => location.reload();
 });
 
-import { GameTime }       from './systems/GameTime.js';
-import { FishDatabase }   from './systems/FishDatabase.js';
-import { Inventory }      from './systems/Inventory.js';
-import { FishSelector }   from './systems/FishSelector.js';
-import { WorldScene }     from './scenes/WorldScene.js';
-import { FishingScene }   from './scenes/FishingScene.js';
-import { HUD }            from './ui/HUD.js';
-import { InventoryPanel } from './ui/InventoryPanel.js';
+import { GameTime }            from './systems/GameTime.js';
+import { FishDatabase }        from './systems/FishDatabase.js';
+import { Inventory }           from './systems/Inventory.js';
+import { FishSelector }        from './systems/FishSelector.js';
+import { CharacterAppearance } from './systems/CharacterAppearance.js';
+import { WorldScene }          from './scenes/WorldScene.js';
+import { FishingScene }        from './scenes/FishingScene.js';
+import { HUD }                 from './ui/HUD.js';
+import { InventoryPanel }      from './ui/InventoryPanel.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
 
-const gameTime  = new GameTime();
-const fishDb    = new FishDatabase();
-const inventory = new Inventory();
-const selector  = new FishSelector(fishDb);
+const gameTime   = new GameTime();
+const fishDb     = new FishDatabase();
+const inventory  = new Inventory();
+const selector   = new FishSelector(fishDb);
+const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const hud   = new HUD(inventory, gameTime, () => invPanel.toggle());
-const invPanel = new InventoryPanel(inventory, fishDb);
+const hud      = new HUD(inventory, gameTime, () => invPanel.toggle());
+const invPanel = new InventoryPanel(inventory, fishDb, appearance);
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 let activeScene = 'world';
@@ -66,7 +68,7 @@ function startWorld(playerPos) {
   fishingScene?.destroy();
   fishingScene = null;
   activeScene = 'world';
-  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot), playerPos);
+  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot), playerPos, appearance);
 }
 
 function startFishing(spot) {
