@@ -62,23 +62,23 @@ const invPanel = new InventoryPanel(inventory, fishDb);
 let activeScene = 'world';
 let worldScene, fishingScene;
 
-function startWorld() {
+function startWorld(playerPos) {
   fishingScene?.destroy();
   fishingScene = null;
   activeScene = 'world';
-  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot));
+  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot), playerPos);
 }
 
 function startFishing(spot) {
+  const playerPos = worldScene?.getPlayerPos();
   activeScene = 'fishing';
   worldScene?.destroy();
   worldScene = null;
   fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
     if (result) {
-      // Show brief catch notification
       showCatchToast(result.fish, result.weight);
     }
-    startWorld();
+    startWorld(playerPos);
   });
   fishingScene.start(spot);
 }

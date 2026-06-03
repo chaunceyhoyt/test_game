@@ -21,9 +21,9 @@ export class HUD {
         <button class="nav-btn nav-btn-main" id="btn-action" title="Fish">
           <div class="nav-btn-icon">🎣</div>
         </button>
-        <button class="nav-btn" id="btn-bag" title="Bag">
-          <div class="nav-btn-icon">🎒</div>
-          <span>Bag</span>
+        <button class="nav-btn" id="btn-bag" title="Tackle Box">
+          <div class="nav-btn-icon">🧰</div>
+          <span>Tackle Box</span>
         </button>
       </div>
     `;

@@ -74,9 +74,17 @@ export class InventoryPanel {
     });
 
     // Equip pole
-    el.querySelectorAll('.equip-btn').forEach(btn => {
+    el.querySelectorAll('.equip-btn[data-pole]').forEach(btn => {
       btn.addEventListener('click', () => {
         this.inventory.equipPole(btn.dataset.pole);
+        this._render();
+      });
+    });
+
+    // Equip bait
+    el.querySelectorAll('.equip-btn[data-bait]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.inventory.equipBait(btn.dataset.bait);
         this._render();
       });
     });
@@ -163,11 +171,26 @@ export class InventoryPanel {
         </div>
       </div>`;
     }
+    const equippedBaitId = this.inventory.equippedBaitId;
     html += `</div><div class="equip-section"><div class="equip-header">🪱 Bait</div>`;
     for (const b of baits) {
-      html += `<div class="equip-card"><span class="equip-icon">🪱</span>
-        <div class="equip-info"><div class="equip-name">${b.name}</div>
-        <div class="equip-stat">x${b.count}</div></div></div>`;
+      const isEquipped = b.id === equippedBaitId;
+      const baitIcon   = b.type === 'lure' ? '🎣' : '🪱';
+      const statLabel  = b.type === 'lure' ? `Durability: ${b.health}` : `x${b.count}`;
+      const isEmpty    = b.type === 'lure' ? b.health <= 0 : b.count <= 0;
+      html += `<div class="equip-card${isEmpty ? ' equip-empty' : ''}">
+        <span class="equip-icon">${baitIcon}</span>
+        <div class="equip-info">
+          <div class="equip-name">${b.name}</div>
+          <div class="equip-stat">${statLabel}${isEmpty ? ' — <span style="color:#ef5350">Empty</span>' : ''}</div>
+        </div>
+        <div class="equip-actions">
+          ${isEquipped
+            ? `<span class="equip-badge">Equipped</span>`
+            : `<button class="equip-btn${isEmpty ? ' equip-btn-disabled' : ''}" data-bait="${b.id}" ${isEmpty ? 'disabled' : ''}>Equip</button>`
+          }
+        </div>
+      </div>`;
     }
     html += `</div>`;
     return html;

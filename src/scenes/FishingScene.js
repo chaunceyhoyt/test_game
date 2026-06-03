@@ -90,6 +90,11 @@ export class FishingScene {
     e.preventDefault();
     this.reelHeld = true;
 
+    if (this.state === 'waiting') {
+      this.onDone(null); // cancel — return to world
+      return;
+    }
+
     if (this.state === 'qte_hook') {
       this._beginReel();
       return;
@@ -135,6 +140,7 @@ export class FishingScene {
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
     this.qteCount       = 0;
+    this.inventory.useBait(); // consume bait on hook
 
     const rarity = this.pendingFish?.rarity ?? 'common';
 
@@ -367,9 +373,15 @@ export class FishingScene {
     ctx.fillText('🐟', cx, py + ph * 0.62 + bob);
 
     const pole = this.inventory.getEquippedPole();
+    const bait = this.inventory.getEquippedBait();
+    const baitLabel = bait ? (bait.type === 'worm' ? `🪱 ${bait.name} x${bait.count}` : `🎣 ${bait.name} ❤️${bait.health}`) : '🚫 No bait';
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '11px sans-serif';
-    ctx.fillText(`🎣 ${pole.name}  (power ${pole.power})`, cx, py + ph * 0.88);
+    ctx.fillText(`🎣 ${pole.name}  ·  ${baitLabel}`, cx, py + ph * 0.85);
+
+    ctx.fillStyle = 'rgba(255,100,100,0.5)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Tap to cancel', cx, py + ph * 0.93);
   }
 
   _drawQteHook(px, py, pw, ph) {
