@@ -351,14 +351,12 @@ export class FishingScene {
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
       if (this._tensionFreeze > 0) {
         // no tension change
-      } else if (inZone && this.reelHeld) {
+      } else if (!this.reelHeld) {
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.36);
+      } else if (inZone) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06);
-      } else if (inZone && !this.reelHeld) {
-        // no change
-      } else if (!inZone && this.reelHeld) {
-        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.15);
       } else {
-        // not holding + outside zone: no change
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.15);
       }
 
       // Catch progress
