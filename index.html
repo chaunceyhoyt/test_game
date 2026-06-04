@@ -39,7 +39,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    canvas {
+    #game {
       display: block;
       width: 100vw;
       height: 100vh;
@@ -131,8 +131,8 @@
     #inventory-panel {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: 88vh;
-      border-radius: 22px 22px 0 0;
+      height: 100vh;
+      border-radius: 0;
       transform: translateY(100%);
       transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
       z-index: 200;
@@ -363,6 +363,386 @@
       line-height: 1.8;
     }
     .empty-msg span { font-size: 14px; }
+
+    /* ── Character Customizer ─────────────────────────────── */
+    .char-preview-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 10px 0 10px;
+    }
+    .char-preview-canvas {
+      display: block;
+      width: 200px;
+      height: 175px;
+      border-radius: 16px;
+      background: rgba(255,248,220,0.85);
+      border: 1.5px solid rgba(90,50,20,0.18);
+      image-rendering: pixelated;
+      touch-action: auto;
+    }
+
+    .char-section {
+      margin-bottom: 16px;
+    }
+    .char-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(42,16,0,0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s;
+      outline: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .swatch:active { transform: scale(0.85); }
+    .swatch-selected {
+      border-color: #2A1000;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.75), 0 1px 4px rgba(0,0,0,0.22);
+    }
+    .char-hint {
+      font-size: 11px;
+      color: rgba(42,16,0,0.4);
+      text-align: center;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    /* ── Shop Panel ────────────────────────────────────────── */
+    #shop-panel.open { transform: translateY(0) !important; }
+
+    .shop-handle {
+      width: 38px; height: 4px;
+      background: rgba(90,50,20,0.28);
+      border-radius: 2px;
+      margin: 10px auto 4px;
+      cursor: pointer;
+    }
+
+    .shop-header {
+      text-align: center;
+      padding: 6px 16px 10px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+    }
+    .shop-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #2A1000;
+      letter-spacing: 0.5px;
+    }
+    .shop-header p {
+      font-size: 12px;
+      color: rgba(42,16,0,0.6);
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    .shop-greeting-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 20px 20px;
+    }
+    .shop-action-btn {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(90,50,20,0.3);
+      background: rgba(255,248,220,0.7);
+      color: #2A1000;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .shop-action-btn:active { background: rgba(255,235,180,0.95); }
+    .shop-action-btn.leave {
+      background: transparent;
+      color: rgba(42,16,0,0.5);
+      font-size: 13px;
+      border-color: rgba(90,50,20,0.15);
+    }
+
+    .shop-back-btn {
+      background: none;
+      border: none;
+      color: rgba(42,16,0,0.6);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-align: left;
+      display: block;
+    }
+
+    .shop-tabs {
+      display: flex;
+      padding: 0 12px;
+      gap: 4px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+    }
+
+    .shop-item-list {
+      padding: 12px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .shop-item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,248,220,0.65);
+      border: 1px solid rgba(90,50,20,0.15);
+      margin-bottom: 8px;
+    }
+    .shop-item-info { flex: 1; min-width: 0; }
+    .shop-item-name { font-size: 14px; font-weight: 700; color: #2A1000; }
+    .shop-item-desc { font-size: 11px; color: rgba(42,16,0,0.55); margin-top: 2px; }
+    .shop-item-price { font-size: 13px; font-weight: 700; color: #7B4A00; white-space: nowrap; }
+    .shop-buy-btn {
+      background: rgba(61,122,26,0.18);
+      color: #3D7A1A;
+      border: 1px solid #3D7A1A;
+      border-radius: 10px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .shop-buy-btn:active { background: rgba(61,122,26,0.35); }
+    .shop-buy-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: rgba(42,16,0,0.4);
+      border-color: rgba(42,16,0,0.2);
+      background: transparent;
+    }
+
+    .shop-sell-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+      gap: 8px;
+    }
+    .shop-sell-header span {
+      font-size: 14px;
+      font-weight: 700;
+      color: #2A1000;
+      flex: 1;
+    }
+    .shop-sell-all-btn {
+      background: rgba(198,40,40,0.15);
+      color: #C62828;
+      border: 1px solid #C62828;
+      border-radius: 12px;
+      padding: 5px 13px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .shop-sell-all-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .shop-fish-list {
+      padding: 10px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .shop-fish-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,248,220,0.65);
+      border: 1px solid rgba(90,50,20,0.15);
+      margin-bottom: 8px;
+    }
+    .shop-fish-info { flex: 1; min-width: 0; }
+    .shop-fish-name { font-size: 13px; font-weight: 700; color: #2A1000; }
+    .shop-fish-sub  { font-size: 11px; color: rgba(42,16,0,0.55); margin-top: 1px; }
+    .shop-fish-stars { letter-spacing: 1px; font-size: 12px; }
+    .shop-fish-price { font-size: 13px; font-weight: 700; color: #7B4A00; }
+    .shop-sell-btn {
+      background: rgba(198,40,40,0.15);
+      color: #C62828;
+      border: 1px solid #C62828;
+      border-radius: 10px;
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .shop-sell-btn:active { background: rgba(198,40,40,0.3); }
+
+    .shop-empty {
+      text-align: center;
+      color: rgba(42,16,0,0.45);
+      font-size: 14px;
+      padding: 40px 20px;
+      line-height: 1.8;
+    }
+
+    /* ── Panel Sub-tabs ───────────────────────────────────── */
+    .panel-subtabs {
+      display: flex;
+      padding: 4px 12px 0;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(139,90,43,0.05);
+    }
+    .subtab-btn {
+      flex: 1;
+      padding: 7px 4px;
+      border: none;
+      background: none;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 700;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+      margin-bottom: -1px;
+    }
+    .subtab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── Dialog Panel (RPG NPC) ───────────────────────────── */
+    #dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 298;
+      display: none;
+      pointer-events: none;
+    }
+    #dialog-backdrop.open { display: block; pointer-events: auto; }
+
+    #dialog-panel {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 33vh;
+      min-height: 140px;
+      max-height: 240px;
+      z-index: 300;
+      display: none;
+      flex-direction: row;
+      align-items: stretch;
+      background: linear-gradient(to bottom, #1c1005 0%, #2e1c08 100%);
+      border-top: 3px solid #8B6914;
+      box-shadow: 0 -6px 28px rgba(0,0,0,0.75);
+      font-family: inherit;
+      touch-action: none;
+    }
+    #dialog-panel.open { display: flex; }
+
+    #dialog-portrait-box {
+      width: 82px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 8px;
+      border-right: 2px solid rgba(139,105,20,0.35);
+      background: rgba(0,0,0,0.18);
+      gap: 6px;
+    }
+    #dialog-portrait {
+      width: 54px; height: 54px;
+      border-radius: 50%;
+      background: rgba(139,105,20,0.18);
+      border: 2px solid rgba(200,165,60,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+    }
+    #dialog-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #C8A53C;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 72px;
+    }
+
+    #dialog-text-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 14px 10px;
+      gap: 6px;
+      overflow: hidden;
+    }
+    #dialog-text {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #F0E6C8;
+      overflow-y: auto;
+    }
+    #dialog-tap-hint {
+      font-size: 10px;
+      color: rgba(200,165,60,0.75);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-align: right;
+      animation: blink 1.2s ease-in-out infinite;
+    }
+
+    #dialog-choices {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 2px 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .dialog-choice-btn {
+      padding: 9px 14px;
+      background: rgba(139,105,20,0.16);
+      border: 1.5px solid rgba(200,165,60,0.35);
+      border-radius: 8px;
+      color: #F0E6C8;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .dialog-choice-btn:active { background: rgba(139,105,20,0.4); }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
 
     /* ── Catch Toast ───────────────────────────────────────── */
     .catch-toast {

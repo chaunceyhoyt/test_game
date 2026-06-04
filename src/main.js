@@ -36,49 +36,76 @@ window.addEventListener('error', (e) => {
   canvas.onclick = () => location.reload();
 });
 
-import { GameTime }       from './systems/GameTime.js';
-import { FishDatabase }   from './systems/FishDatabase.js';
-import { Inventory }      from './systems/Inventory.js';
-import { FishSelector }   from './systems/FishSelector.js';
-import { WorldScene }     from './scenes/WorldScene.js';
-import { FishingScene }   from './scenes/FishingScene.js';
-import { HUD }            from './ui/HUD.js';
-import { InventoryPanel } from './ui/InventoryPanel.js';
+import { GameTime }            from './systems/GameTime.js';
+import { FishDatabase }        from './systems/FishDatabase.js';
+import { Inventory }           from './systems/Inventory.js';
+import { FishSelector }        from './systems/FishSelector.js';
+import { CharacterAppearance } from './systems/CharacterAppearance.js';
+import { WorldScene }          from './scenes/WorldScene.js';
+import { FishingScene }        from './scenes/FishingScene.js';
+import { HUD }                 from './ui/HUD.js';
+import { InventoryPanel }      from './ui/InventoryPanel.js';
+import { ShopPanel }           from './ui/ShopPanel.js';
+import { DialogPanel }         from './ui/DialogPanel.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
 
-const gameTime  = new GameTime();
-const fishDb    = new FishDatabase();
-const inventory = new Inventory();
-const selector  = new FishSelector(fishDb);
+const gameTime   = new GameTime();
+const fishDb     = new FishDatabase();
+const inventory  = new Inventory();
+const selector   = new FishSelector(fishDb);
+const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const hud   = new HUD(inventory, gameTime, () => invPanel.toggle());
-const invPanel = new InventoryPanel(inventory, fishDb);
+const hud         = new HUD(inventory, gameTime, () => invPanel.toggle());
+const invPanel    = new InventoryPanel(inventory, fishDb, appearance);
+const shopPanel   = new ShopPanel(inventory, fishDb);
+const dialogPanel = new DialogPanel();
+
+const SHOP_NPC_DIALOG = {
+  portrait: '🧑‍🦳',
+  name:     'Old Pete',
+  lines: [
+    "Welcome to the Rusty Anchor, angler!",
+    "Finest gear on the whole lake.",
+    "What can I do for ya?",
+  ],
+  choices: [
+    { label: '🛒 Browse Goods', cb: () => shopPanel.openBuy()  },
+    { label: '💰 Sell Fish',    cb: () => shopPanel.openSell() },
+    { label: '👋 Leave',        cb: () => {}                   },
+  ],
+};
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 let activeScene = 'world';
 let worldScene, fishingScene;
+let worldState  = null; // full world state persisted across fishing trips
 
-function startWorld(playerPos) {
+function startWorld(state) {
   fishingScene?.destroy();
   fishingScene = null;
-  activeScene = 'world';
-  worldScene = new WorldScene(canvas, gameTime, (spot) => startFishing(spot), playerPos);
+  activeScene  = 'world';
+  worldScene   = new WorldScene(
+    canvas, gameTime,
+    (spot) => startFishing(spot),
+    state,
+    appearance,
+    inventory,
+    () => dialogPanel.show(SHOP_NPC_DIALOG)
+  );
 }
 
 function startFishing(spot) {
-  const playerPos = worldScene?.getPlayerPos();
-  activeScene = 'fishing';
+  worldState   = worldScene?.getState(); // capture boat pos, zoom, playerOnBoat
+  activeScene  = 'fishing';
   worldScene?.destroy();
-  worldScene = null;
+  worldScene   = null;
   fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
-    if (result) {
-      showCatchToast(result.fish, result.weight);
-    }
-    startWorld(playerPos);
+    if (result) showCatchToast(result.fish, result.weight);
+    startWorld(worldState);
   });
   fishingScene.start(spot);
 }
@@ -112,6 +139,7 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   gameTime.update(dt);
+  dialogPanel.update(dt);
 
   if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
   if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
@@ -121,6 +149,6 @@ function loop(timestamp) {
 }
 
 // ── Start ────────────────────────────────────────────────────────────────────
-startWorld();
+startWorld(null);
 document.getElementById('diag')?.remove();
 requestAnimationFrame(t => { lastTime = t; loop(t); });
