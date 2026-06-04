@@ -349,7 +349,7 @@ export class FishingScene {
       if (inZone && this.reelHeld) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06);
       } else if (inZone && !this.reelHeld) {
-        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.03);
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.40);
       } else if (!inZone && this.reelHeld) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.15);
       } else {
