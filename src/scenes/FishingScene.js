@@ -356,15 +356,13 @@ export class FishingScene {
         // not holding + outside zone: no change
       }
 
-      // Catch progress: holding builds fast in zone, slow outside; not holding + in zone = slow drip
-      // Zero tension = fish is slipping away
-      if (this.secondaryMeter <= 0) {
-        this.primaryMeter = Math.max(0, this.primaryMeter - dt * 0.04);
-      } else if (this.reelHeld) {
+      // Catch progress
+      if (this.reelHeld) {
         this.primaryMeter = Math.min(1, this.primaryMeter + dt * (inZone ? 0.09 : 0.03));
       } else if (inZone) {
         this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.03);
       }
+      // not holding + outside zone: no change
 
       // Catch complete
       if (this.primaryMeter >= 1) { this._finishReel(true); return; }
