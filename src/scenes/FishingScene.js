@@ -351,7 +351,7 @@ export class FishingScene {
       } else if (this.reelHeld && !inZone) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.25);
       } else if (!this.reelHeld) {
-        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.18);
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.36);
       }
 
       // Catch progress: holding builds fast in zone, slow outside; not holding + in zone = slow drip
