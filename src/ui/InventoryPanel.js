@@ -31,25 +31,39 @@ const PANTS_COLORS = [
   { label: 'Ash',     value: '#616161' },
 ];
 
+const BOAT_COLORS = [
+  { label: 'Oak',      value: '#8B6340' },
+  { label: 'Mahogany', value: '#5C2E00' },
+  { label: 'Teak',     value: '#C4863C' },
+  { label: 'Ebony',    value: '#2D1A0A' },
+  { label: 'Navy',     value: '#1A3A6B' },
+  { label: 'Forest',   value: '#2E5A2E' },
+  { label: 'Crimson',  value: '#8B1A1A' },
+  { label: 'White',    value: '#F0EEE8' },
+];
+
 export class InventoryPanel {
   constructor(inventory, fishDb, appearance) {
-    this.inventory  = inventory;
-    this.fishDb     = fishDb;
-    this.appearance = appearance;
-    this.activeTab  = 'fish';
-    this.isOpen     = false;
+    this.inventory     = inventory;
+    this.fishDb        = fishDb;
+    this.appearance    = appearance;
+    this.activeTab     = 'inventory';
+    this.activeSubTab  = 'fish';
+    this.isOpen        = false;
 
     this.el = document.createElement('div');
     this.el.id = 'inventory-panel';
     this.el.innerHTML = `
       <div class="panel-handle"></div>
       <div class="panel-tabs">
-        <button class="tab-btn active" data-tab="fish">🐟 Fish</button>
-        <button class="tab-btn" data-tab="equipment">🎣 Gear</button>
-        <button class="tab-btn" data-tab="dex">📖 FishDex</button>
-        <button class="tab-btn" data-tab="boat">⛵ Boat</button>
-        <button class="tab-btn" data-tab="look">🐱 Look</button>
         <button class="tab-btn" data-tab="map">🗺️ Map</button>
+        <button class="tab-btn active" data-tab="inventory">🎒 Inventory</button>
+        <button class="tab-btn" data-tab="fishdex">📖 FishDex</button>
+        <button class="tab-btn" data-tab="style">🎨 Style</button>
+      </div>
+      <div id="panel-subtabs" class="panel-subtabs">
+        <button class="subtab-btn active" data-subtab="fish">🐟 Fish</button>
+        <button class="subtab-btn" data-subtab="gear">🎣 Gear</button>
       </div>
       <div id="panel-content" class="panel-content"></div>
     `;
@@ -57,6 +71,10 @@ export class InventoryPanel {
 
     this.el.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => this._switchTab(btn.dataset.tab));
+    });
+
+    this.el.querySelectorAll('.subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._switchSubTab(btn.dataset.subtab));
     });
 
     let startY = 0;
@@ -83,18 +101,34 @@ export class InventoryPanel {
 
   _switchTab(tab) {
     this.activeTab = tab;
+    if (tab !== 'inventory') {
+      this.activeSubTab = 'fish';
+      this.el.querySelectorAll('.subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === 'fish'));
+    }
     this.el.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    this._render();
+  }
+
+  _switchSubTab(subtab) {
+    this.activeSubTab = subtab;
+    this.el.querySelectorAll('.subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === subtab));
     this._render();
   }
 
   _render() {
     const el = document.getElementById('panel-content');
-    if (this.activeTab === 'fish')      el.innerHTML = this._renderFish();
-    if (this.activeTab === 'equipment') el.innerHTML = this._renderEquipment();
-    if (this.activeTab === 'dex')       el.innerHTML = this._renderDex();
-    if (this.activeTab === 'boat')      el.innerHTML = this._renderBoat();
-    if (this.activeTab === 'look')      el.innerHTML = this._renderLook();
-    if (this.activeTab === 'map')       el.innerHTML = this._renderMap();
+
+    // Show subtabs only when on inventory tab
+    const subtabsEl = document.getElementById('panel-subtabs');
+    if (subtabsEl) {
+      subtabsEl.style.display = this.activeTab === 'inventory' ? '' : 'none';
+    }
+
+    if (this.activeTab === 'map')                                         el.innerHTML = this._renderMap();
+    if (this.activeTab === 'inventory' && this.activeSubTab === 'fish')   el.innerHTML = this._renderFish();
+    if (this.activeTab === 'inventory' && this.activeSubTab === 'gear')   el.innerHTML = this._renderGear();
+    if (this.activeTab === 'fishdex')                                     el.innerHTML = this._renderDex();
+    if (this.activeTab === 'style')                                       el.innerHTML = this._renderStyle();
 
     // Equip pole
     el.querySelectorAll('.equip-btn[data-pole]').forEach(btn => {
@@ -137,12 +171,12 @@ export class InventoryPanel {
       });
     });
 
-    if (this.activeTab === 'look') {
+    if (this.activeTab === 'style') {
       requestAnimationFrame(() => this._drawPreview());
     }
   }
 
-  // ── Character preview canvas ────────────────────────────────────────────────
+  // ── Character + boat preview canvas ────────────────────────────────────────
 
   _drawPreview() {
     const canvas = document.getElementById('char-preview');
@@ -151,18 +185,21 @@ export class InventoryPanel {
     const cw = canvas.width, ch = canvas.height;
     ctx.clearRect(0, 0, cw, ch);
 
-    const fur   = this.appearance?.furColor   ?? '#FFCC80';
-    const shirt = this.appearance?.shirtColor ?? '#1976D2';
-    const pants = this.appearance?.pantsColor ?? '#37474F';
+    const fur      = this.appearance?.furColor   ?? '#FFCC80';
+    const shirt    = this.appearance?.shirtColor ?? '#1976D2';
+    const pants    = this.appearance?.pantsColor ?? '#37474F';
+    const boatCol  = this.appearance?.boatColor  ?? '#8B6340';
 
     // Draw at 3× scale so the character fills the preview nicely
     const S = 3;
     ctx.save();
     ctx.scale(S, S);
-    const x = cw / (2 * S);       // ≈ 33  (canvas center in scaled coords)
-    const y = (ch * 0.62) / S;    // ≈ 36  (anchor point for character)
 
-    // Shadow
+    // Shift character left to make room for the boat on the right
+    const x = cw / (2 * S) - 18;  // ≈ 15 in scaled coords
+    const y = (ch * 0.62) / S;    // ≈ 36
+
+    // Shadow under character
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.beginPath(); ctx.ellipse(x, y + 14, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
 
@@ -214,6 +251,38 @@ export class InventoryPanel {
     ctx.beginPath(); ctx.moveTo(x + 6, y - 2); ctx.lineTo(x + 18, y - 18); ctx.stroke();
     ctx.strokeStyle = 'rgba(200,200,255,0.5)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(x + 18, y - 18); ctx.lineTo(x + 22, y - 10); ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // ── Boat on the right ──────────────────────────────────────────────────
+    const bx = 72;  // boat center x in scaled coords
+    const by = 48;  // boat center y in scaled coords
+
+    // Water-line pixels
+    ctx.fillStyle = 'rgba(80,160,220,0.35)';
+    for (let wx = bx - 14; wx <= bx + 14; wx += 3) {
+      ctx.fillRect(wx, by + 8, 2, 1);
+    }
+
+    // Hull
+    ctx.fillStyle = boatCol;
+    ctx.beginPath(); ctx.ellipse(bx, by, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Bow stripe (lighter highlight along top of hull)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath(); ctx.ellipse(bx, by - 2, 14, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Gunwale (dark rim)
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(bx, by, 16, 7, 0, 0, Math.PI * 2); ctx.stroke();
+
+    // Simple oars (two lines extending out each side)
+    ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(bx - 8, by - 1); ctx.lineTo(bx - 22, by + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx + 8, by - 1); ctx.lineTo(bx + 22, by + 5); ctx.stroke();
+    // Oar blades
+    ctx.fillStyle = '#A1887F';
+    ctx.beginPath(); ctx.ellipse(bx - 22, by + 6, 3, 1.5, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + 22, by + 6, 3, 1.5, -0.4, 0, Math.PI * 2); ctx.fill();
     ctx.lineCap = 'butt';
 
     ctx.restore();
@@ -278,10 +347,16 @@ export class InventoryPanel {
     return html;
   }
 
-  _renderEquipment() {
-    const poles      = this.inventory.poles.filter(p => p.owned);
-    const baits      = this.inventory.baits;
-    const equippedId = this.inventory.equippedPoleId;
+  _renderGear() {
+    const poles          = this.inventory.poles.filter(p => p.owned);
+    const baits          = this.inventory.baits;
+    const equippedId     = this.inventory.equippedPoleId;
+    const equippedBaitId = this.inventory.equippedBaitId;
+    const motors         = this.inventory.motors ?? [];
+    const equippedMotorId = this.inventory.equippedMotorId;
+    const isPaddling     = equippedMotorId == null;
+
+    // ── Poles ──
     let html = `<div class="equip-section"><div class="equip-header">🎣 Fishing Poles</div>`;
     if (!poles.length) {
       html += `<div class="empty-msg" style="padding:16px 0;font-size:13px">No poles owned — visit the Shop!</div>`;
@@ -302,8 +377,10 @@ export class InventoryPanel {
         </div>
       </div>`;
     }
-    const equippedBaitId = this.inventory.equippedBaitId;
-    html += `</div><div class="equip-section"><div class="equip-header">🪱 Bait</div>`;
+    html += `</div>`;
+
+    // ── Baits ──
+    html += `<div class="equip-section"><div class="equip-header">🪱 Bait</div>`;
     for (const b of baits) {
       const isEquipped = b.id === equippedBaitId;
       const baitIcon   = b.type === 'lure' ? '🎣' : '🪱';
@@ -323,6 +400,46 @@ export class InventoryPanel {
         </div>
       </div>`;
     }
+    html += `</div>`;
+
+    // ── Motors ──
+    html += `<div class="equip-section"><div class="equip-header">⚙️ Motor</div>
+      <div class="equip-card">
+        <span class="equip-icon">🚣</span>
+        <div class="equip-info">
+          <div class="equip-name">None (Paddle)</div>
+          <div class="equip-stat">Very slow &nbsp;·&nbsp; No fuel use</div>
+        </div>
+        <div class="equip-actions">
+          ${isPaddling
+            ? `<span class="equip-badge">Active</span>`
+            : `<button class="equip-btn" data-motor-unequip="1">Select</button>`}
+        </div>
+      </div>`;
+
+    const ownedMotors = motors.filter(m => m.owned);
+    for (const m of ownedMotors) {
+      const isEquipped = m.id === equippedMotorId;
+      html += `<div class="equip-card">
+        <span class="equip-icon">⚙️</span>
+        <div class="equip-info">
+          <div class="equip-name">${m.name}</div>
+          <div class="equip-stat">Speed: ${m.speed} px/s &nbsp;·&nbsp; Uses fuel</div>
+        </div>
+        <div class="equip-actions">
+          ${isEquipped
+            ? `<span class="equip-badge">Equipped</span>`
+            : `<button class="equip-btn" data-motor="${m.id}">Equip</button>`}
+        </div>
+      </div>`;
+    }
+
+    if (!ownedMotors.length) {
+      html += `<div style="font-size:12px;color:var(--text-dim);padding:8px 4px;font-style:italic">
+        No motors owned — buy one at the Shop!
+      </div>`;
+    }
+
     html += `</div>`;
     return html;
   }
@@ -359,7 +476,7 @@ export class InventoryPanel {
     return html;
   }
 
-  _renderLook() {
+  _renderStyle() {
     const a = this.appearance;
     if (!a) return `<div class="empty-msg">Customization unavailable</div>`;
 
@@ -374,7 +491,7 @@ export class InventoryPanel {
 
     return `
       <div class="char-preview-wrap">
-        <canvas id="char-preview" width="200" height="175" class="char-preview-canvas"></canvas>
+        <canvas id="char-preview" width="280" height="175" class="char-preview-canvas"></canvas>
       </div>
       <div class="char-section">
         <div class="char-label">🐱 Fur</div>
@@ -388,81 +505,12 @@ export class InventoryPanel {
         <div class="char-label">👖 Pants</div>
         ${swatchRow('pantsColor', PANTS_COLORS, a.pantsColor)}
       </div>
-      <div class="char-hint">More options coming — accessories &amp; hats soon!</div>
-    `;
-  }
-
-  _renderBoat() {
-    const a = this.appearance;
-    const motors         = this.inventory.motors ?? [];
-    const equippedMotorId = this.inventory.equippedMotorId;
-    const isPaddling     = equippedMotorId == null;
-
-    const boatColors = [
-      { label: 'Oak',      value: '#8B6340' },
-      { label: 'Mahogany', value: '#5C2E00' },
-      { label: 'Teak',     value: '#C4863C' },
-      { label: 'Ebony',    value: '#2D1A0A' },
-      { label: 'Navy',     value: '#1A3A6B' },
-      { label: 'Forest',   value: '#2E5A2E' },
-      { label: 'Crimson',  value: '#8B1A1A' },
-      { label: 'White',    value: '#F0EEE8' },
-    ];
-
-    const swatchRow = (key, colors, current) =>
-      `<div class="swatch-row">${colors.map(c => {
-        const sel = c.value.toLowerCase() === (current ?? '').toLowerCase();
-        return `<button class="swatch${sel ? ' swatch-selected' : ''}"
-          style="background:${c.value}"
-          data-key="${key}" data-value="${c.value}"
-          title="${c.label}"></button>`;
-      }).join('')}</div>`;
-
-    let html = `
       <div class="char-section">
         <div class="char-label">🎨 Hull Color</div>
-        ${swatchRow('boatColor', boatColors, a?.boatColor)}
+        ${swatchRow('boatColor', BOAT_COLORS, a.boatColor)}
       </div>
-      <div class="equip-section">
-        <div class="equip-header">⚙️ Motor</div>
-        <div class="equip-card">
-          <span class="equip-icon">🚣</span>
-          <div class="equip-info">
-            <div class="equip-name">None (Paddle)</div>
-            <div class="equip-stat">Very slow &nbsp;·&nbsp; No fuel use</div>
-          </div>
-          <div class="equip-actions">
-            ${isPaddling
-              ? `<span class="equip-badge">Active</span>`
-              : `<button class="equip-btn" data-motor-unequip="1">Select</button>`}
-          </div>
-        </div>`;
-
-    const ownedMotors = motors.filter(m => m.owned);
-    for (const m of ownedMotors) {
-      const isEquipped = m.id === equippedMotorId;
-      html += `<div class="equip-card">
-        <span class="equip-icon">⚙️</span>
-        <div class="equip-info">
-          <div class="equip-name">${m.name}</div>
-          <div class="equip-stat">Speed: ${m.speed} px/s &nbsp;·&nbsp; Uses fuel</div>
-        </div>
-        <div class="equip-actions">
-          ${isEquipped
-            ? `<span class="equip-badge">Equipped</span>`
-            : `<button class="equip-btn" data-motor="${m.id}">Equip</button>`}
-        </div>
-      </div>`;
-    }
-
-    if (!ownedMotors.length) {
-      html += `<div style="font-size:12px;color:var(--text-dim);padding:8px 4px;font-style:italic">
-        No motors owned — buy one at the Shop!
-      </div>`;
-    }
-
-    html += `</div>`;
-    return html;
+      <div class="char-hint">More options coming — accessories &amp; hats soon!</div>
+    `;
   }
 
   _renderMap() {
@@ -470,7 +518,7 @@ export class InventoryPanel {
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;
                   gap:12px; padding:32px 20px; color:var(--text-dim); text-align:center;">
         <div style="font-size:48px;">🗺️</div>
-        <div style="font-size:1rem; font-weight:700; color:var(--text-main);">Map</div>
+        <div style="font-size:1rem; font-weight:700; color:var(--text);">Map</div>
         <div style="font-size:0.85rem; font-style:italic;">Coming soon — full world map with fishing spots, boat location, and points of interest.</div>
       </div>
     `;
@@ -478,4 +526,3 @@ export class InventoryPanel {
 
   destroy() { this.el.remove(); }
 }
-

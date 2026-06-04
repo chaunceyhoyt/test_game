@@ -42,8 +42,23 @@ export class ShopPanel {
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
-  open() {
-    this._state = 'greeting';
+  open(state = 'greeting') {
+    this._state = state;
+    this.isOpen = true;
+    this.el.style.transform = 'translateY(0)';
+    this._render();
+  }
+
+  openBuy() {
+    this._state  = 'buy';
+    this._buyTab = 'equipment';
+    this.isOpen  = true;
+    this.el.style.transform = 'translateY(0)';
+    this._render();
+  }
+
+  openSell() {
+    this._state = 'sell';
     this.isOpen = true;
     this.el.style.transform = 'translateY(0)';
     this._render();
@@ -52,6 +67,7 @@ export class ShopPanel {
   close() {
     this.isOpen = false;
     this.el.style.transform = 'translateY(100%)';
+    this._removeConfirmOverlay();
   }
 
   toggle() { this.isOpen ? this.close() : this.open(); }
@@ -313,13 +329,11 @@ export class ShopPanel {
       });
     });
 
-    // Buy item buttons
+    // Buy item buttons — show confirmation first
     this.el.querySelectorAll('[data-buy-item]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const result = this.inventory.buyItem(btn.dataset.buyItem);
-        if (result?.success !== false) {
-          this._render();
-        }
+        const item = (this.inventory.shopCatalog ?? []).find(i => i.id === btn.dataset.buyItem);
+        if (item) this._showConfirm(item);
       });
     });
 
@@ -336,6 +350,67 @@ export class ShopPanel {
       this.inventory.sellAllFish();
       this._render();
     });
+  }
+
+  // ── Purchase confirmation overlay ────────────────────────────────────────────
+
+  _showConfirm(item) {
+    this._removeConfirmOverlay();
+    const overlay = document.createElement('div');
+    overlay.id = 'shop-confirm-overlay';
+    overlay.style.cssText = `
+      position:absolute; inset:0; z-index:10;
+      background:rgba(42,16,0,0.72); backdrop-filter:blur(3px);
+      display:flex; align-items:center; justify-content:center;
+      padding:24px; border-radius:inherit;
+    `;
+    const newBal = this.inventory.money - item.price;
+    overlay.innerHTML = `
+      <div style="
+        background:linear-gradient(160deg,#F6EAD0 0%,#EDD9A0 100%);
+        border-radius:16px; padding:22px 20px;
+        width:100%; max-width:280px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.5);
+        border:2px solid #7B4A22; color:#2A1000;
+        font-family:inherit;
+      ">
+        <div style="font-size:1rem;font-weight:800;text-align:center;margin-bottom:6px;">Confirm Purchase</div>
+        <div style="font-size:0.85rem;color:rgba(42,16,0,0.65);text-align:center;margin-bottom:4px;">
+          ${item.name}
+        </div>
+        <div style="font-size:1.3rem;font-weight:800;color:#7B4A22;text-align:center;margin-bottom:14px;">
+          $${item.price}
+        </div>
+        <div style="font-size:0.78rem;color:rgba(42,16,0,0.5);text-align:center;margin-bottom:16px;">
+          Balance: $${this.inventory.money} → <strong style="color:${newBal >= 0 ? '#3D7A1A' : '#C62828'}">$${newBal}</strong>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button id="shop-confirm-cancel" style="
+            flex:1;padding:10px;border:none;border-radius:10px;cursor:pointer;
+            background:rgba(42,16,0,0.12);color:#2A1000;
+            font-size:0.88rem;font-weight:600;font-family:inherit;
+          ">Cancel</button>
+          <button id="shop-confirm-buy" style="
+            flex:1;padding:10px;border:none;border-radius:10px;cursor:pointer;
+            background:#7B4A22;color:#fff;
+            font-size:0.88rem;font-weight:600;font-family:inherit;
+          ">Buy!</button>
+        </div>
+      </div>
+    `;
+    this.el.style.position = 'relative';
+    this.el.appendChild(overlay);
+
+    overlay.querySelector('#shop-confirm-cancel').addEventListener('click', () => this._removeConfirmOverlay());
+    overlay.querySelector('#shop-confirm-buy').addEventListener('click', () => {
+      this.inventory.buyItem(item.id);
+      this._removeConfirmOverlay();
+      this._render();
+    });
+  }
+
+  _removeConfirmOverlay() {
+    this.el.querySelector('#shop-confirm-overlay')?.remove();
   }
 
   destroy() { this.el.remove(); }

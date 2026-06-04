@@ -46,6 +46,7 @@ import { FishingScene }        from './scenes/FishingScene.js';
 import { HUD }                 from './ui/HUD.js';
 import { InventoryPanel }      from './ui/InventoryPanel.js';
 import { ShopPanel }           from './ui/ShopPanel.js';
+import { DialogPanel }         from './ui/DialogPanel.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
@@ -58,9 +59,25 @@ const selector   = new FishSelector(fishDb);
 const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const hud       = new HUD(inventory, gameTime, () => invPanel.toggle());
-const invPanel  = new InventoryPanel(inventory, fishDb, appearance);
-const shopPanel = new ShopPanel(inventory, fishDb);
+const hud         = new HUD(inventory, gameTime, () => invPanel.toggle());
+const invPanel    = new InventoryPanel(inventory, fishDb, appearance);
+const shopPanel   = new ShopPanel(inventory, fishDb);
+const dialogPanel = new DialogPanel();
+
+const SHOP_NPC_DIALOG = {
+  portrait: '🧑‍🦳',
+  name:     'Old Pete',
+  lines: [
+    "Welcome to the Rusty Anchor, angler!",
+    "Finest gear on the whole lake.",
+    "What can I do for ya?",
+  ],
+  choices: [
+    { label: '🛒 Browse Goods', cb: () => shopPanel.openBuy()  },
+    { label: '💰 Sell Fish',    cb: () => shopPanel.openSell() },
+    { label: '👋 Leave',        cb: () => {}                   },
+  ],
+};
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 let activeScene = 'world';
@@ -77,7 +94,7 @@ function startWorld(state) {
     state,
     appearance,
     inventory,
-    () => shopPanel.open()
+    () => dialogPanel.show(SHOP_NPC_DIALOG)
   );
 }
 
@@ -122,6 +139,7 @@ function loop(timestamp) {
   lastTime = timestamp;
 
   gameTime.update(dt);
+  dialogPanel.update(dt);
 
   if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
   if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
