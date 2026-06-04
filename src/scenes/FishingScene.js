@@ -353,18 +353,22 @@ export class FishingScene {
       }
       // holding in zone → no change; at 0 → no penalty
 
-      // Catch progress: holding builds it (fast in zone, slow outside), not holding = stops
+      // Catch progress: holding builds fast in zone, slow outside; not holding + in zone = slow drip
       if (this.reelHeld) {
         this.primaryMeter = Math.min(1, this.primaryMeter + dt * (inZone ? 0.09 : 0.03));
+      } else if (inZone) {
+        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.02);
       }
-      // releasing: progress neither fills nor drains — it holds its position
+
+      // Catch complete
+      if (this.primaryMeter >= 1) { this._finishReel(true); return; }
 
       // Line break at full tension
       if (this.secondaryMeter >= 1) { this._lineBroken(); return; }
 
-      // Fish lunge QTE on timer
-      this._boostTimer -= dt;
-      if (this._boostTimer <= 0) { this._beginQteBoost(); return; }
+      // Fish lunge QTE — disabled for now, timer kept for future use
+      // this._boostTimer -= dt;
+      // if (this._boostTimer <= 0) { this._beginQteBoost(); return; }
       return;
     }
 
