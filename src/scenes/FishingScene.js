@@ -124,12 +124,19 @@ export class FishingScene {
     if (this.state === 'reel') {
       const now = Date.now();
       if (now - this.lastTapTime < 300 && this.jumpCooldown <= 0) {
-        // Double tap — burst the reel position forward
-        this.reelPos      = Math.min(1, this.reelPos + 0.20);
+        const newPos = Math.min(1, this.reelPos + 0.20);
+        this.reelPos      = newPos;
         this.jumpCooldown = this.jumpCooldownMax;
-        this.jumpFlash    = 0.45;
         this.lastTapTime  = 0;
-        this._vibrate([80]); // snappy little buzz
+        // Bonus progress if circle lands inside zone
+        if (newPos >= this.zoneMin && newPos <= this.zoneMax) {
+          this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
+          this.jumpFlash    = 0.9;
+          this._vibrate([50, 30, 200]);
+        } else {
+          this.jumpFlash = 0.45;
+          this._vibrate([80]);
+        }
       } else {
         this.lastTapTime = now;
       }
@@ -346,12 +353,11 @@ export class FishingScene {
       }
       // holding in zone → no change; at 0 → no penalty
 
-      // Catch progress: fills slowly when circle is in zone and player isn't touching
-      if (inZone && !this.reelHeld) {
-        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.06);
-      } else {
-        this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
+      // Catch progress: holding builds it (fast in zone, slow outside), not holding = stops
+      if (this.reelHeld) {
+        this.primaryMeter = Math.min(1, this.primaryMeter + dt * (inZone ? 0.09 : 0.03));
       }
+      // releasing: progress neither fills nor drains — it holds its position
 
       // Line break at full tension
       if (this.secondaryMeter >= 1) { this._lineBroken(); return; }
@@ -391,7 +397,11 @@ export class FishingScene {
     ctx.fillStyle = 'rgba(0,0,30,0.75)';
     ctx.fillRect(0, 0, cw, ch);
 
-    // Water surface
+    // Waiting and hook use a full-screen immersive bobber scene — no panel
+    if (this.state === 'waiting')  { this._drawWaiting(cw, ch);  return; }
+    if (this.state === 'qte_hook') { this._drawQteHook(cw, ch);  return; }
+
+    // Panel states (reel, boost, result) ──────────────────────────────────────
     ctx.fillStyle = this.gameTime.waterColor;
     ctx.fillRect(0, 0, cw, ch * 0.3);
     for (let i = 0; i < 3; i++) {
@@ -405,9 +415,8 @@ export class FishingScene {
       ctx.stroke();
     }
 
-    // Line + bobber
-    const biting   = this.state === 'qte_hook' || this.state === 'reel' || this.state === 'qte_boost';
-    const bobAmp   = biting ? Math.sin(this.t * 12) * 5 : Math.sin(this.t * 1.2) * 2;
+    const biting   = this.state === 'reel' || this.state === 'qte_boost';
+    const bobAmp   = biting ? Math.sin(this.t * 12) * 5 : 0;
     const lineEndX = cw / 2 + Math.sin(this.t * 0.5) * 20;
     const lineEndY = ch * 0.25 + bobAmp;
 
@@ -416,9 +425,9 @@ export class FishingScene {
     ctx.beginPath(); ctx.moveTo(cw / 2, 0); ctx.lineTo(lineEndX, lineEndY); ctx.stroke();
 
     ctx.fillStyle = '#e53935';
-    ctx.beginPath(); ctx.arc(lineEndX, lineEndY, biting ? 8 : 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(lineEndX, lineEndY, 6, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(lineEndX, lineEndY - 3, biting ? 8 : 6, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(lineEndX, lineEndY - 3, 6, 0, Math.PI); ctx.fill();
 
     if (biting) {
       for (let i = 0; i < 3; i++) {
@@ -429,15 +438,12 @@ export class FishingScene {
       }
     }
 
-    // Panel — 140px bottom clearance
     const pw = Math.min(cw * 0.9, 360);
     const px = (cw - pw) / 2;
     const py = ch * 0.33;
     const ph = ch - py - 140;
     this._drawPanel(px, py, pw, ph);
 
-    if (this.state === 'waiting')   this._drawWaiting(px, py, pw, ph);
-    if (this.state === 'qte_hook')  this._drawQteHook(px, py, pw, ph);
     if (this.state === 'reel')      this._drawReel(px, py, pw, ph);
     if (this.state === 'qte_boost') this._drawQteBoost(px, py, pw, ph);
     if (this.state === 'result')    this._drawResult(px, py, pw, ph);
@@ -510,78 +516,167 @@ export class FishingScene {
     this._roundRect(px + pad, py + pad, pw - pad * 2, ph - pad * 2, ri); ctx.stroke();
   }
 
-  _drawWaiting(px, py, pw, ph) {
-    const ctx = this.ctx;
-    const cx  = px + pw / 2;
-    ctx.textAlign = 'center';
-
-    ctx.fillStyle = 'rgba(42,16,0,0.45)';
-    ctx.font = '12px sans-serif';
-    ctx.fillText(`📍 ${this.spot?.label ?? ''} · ${this.gameTime.timeOfDay} · ${this.gameTime.season}`, cx, py + ph * 0.22);
-
-    const dots = '.'.repeat(1 + Math.floor(this.t * 2) % 3);
-    ctx.fillStyle = 'rgba(42,16,0,0.80)';
-    ctx.font = 'bold 15px sans-serif';
-    ctx.fillText(`Waiting for a bite${dots}`, cx, py + ph * 0.40);
-
-    const bob = Math.sin(this.t * 1.8) * 6;
-    ctx.font = '42px sans-serif';
-    ctx.fillText('🐟', cx, py + ph * 0.62 + bob);
-
-    const pole = this.inventory.getEquippedPole();
-    const bait = this.inventory.getEquippedBait();
-    const baitLabel = bait ? (bait.type === 'worm' ? `🪱 ${bait.name} x${bait.count}` : `🎣 ${bait.name} ❤️${bait.health}`) : '🚫 No bait';
-    ctx.fillStyle = 'rgba(42,16,0,0.45)';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(`🎣 ${pole.name}  ·  ${baitLabel}`, cx, py + ph * 0.85);
-
-    ctx.fillStyle = 'rgba(160,30,30,0.75)';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('Tap to cancel', cx, py + ph * 0.93);
+  _drawWaterScene(ctx, cw, ch, waterY) {
+    // Sky
+    const skyG = ctx.createLinearGradient(0, 0, 0, waterY);
+    skyG.addColorStop(0, '#0a1520');
+    skyG.addColorStop(1, this.gameTime.waterColor);
+    ctx.fillStyle = skyG;
+    ctx.fillRect(0, 0, cw, waterY);
+    // Deep water
+    const waterG = ctx.createLinearGradient(0, waterY, 0, ch);
+    waterG.addColorStop(0, this.gameTime.waterColor);
+    waterG.addColorStop(1, '#040d18');
+    ctx.fillStyle = waterG;
+    ctx.fillRect(0, waterY, cw, ch - waterY);
+    // Waves
+    for (let i = 0; i < 4; i++) {
+      ctx.strokeStyle = `rgba(255,255,255,${0.05 + i * 0.02})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let x = 0; x <= cw; x += 16) {
+        const wy = waterY + 10 + i * 14 + Math.sin((x / cw) * Math.PI * 5 + this.t * 0.9 + i * 0.7) * 4;
+        x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
+      }
+      ctx.stroke();
+    }
   }
 
-  _drawQteHook(px, py, pw, ph) {
-    const ctx      = this.ctx;
-    const cx       = px + pw / 2;
-    const cy       = py + ph * 0.52;
-    const radius   = Math.min(pw * 0.27, 75);
+  _drawBobber(ctx, cx, cy, r, submerged) {
+    ctx.fillStyle = '#e53935';
+    ctx.fillRect(cx - 2, cy - r - 6, 4, 8); // tip
+    ctx.fillStyle = submerged ? 'rgba(229,57,53,0.35)' : '#e53935';
+    ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = submerged ? 'rgba(255,255,255,0.12)' : '#fff';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = submerged ? 'rgba(40,40,40,0.3)' : '#2a2a2a';
+    ctx.fillRect(cx - r, cy - 2, r * 2, 4);
+    if (!submerged) {
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath(); ctx.ellipse(cx - r * 0.3, cy - r * 0.35, r * 0.18, r * 0.28, -0.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  _drawWaiting(cw, ch) {
+    const ctx = this.ctx;
+    const cx  = cw / 2;
+    const waterY = ch * 0.48;
+
+    this._drawWaterScene(ctx, cw, ch, waterY);
+
+    // Gentle ripples from bobber
+    for (let i = 0; i < 3; i++) {
+      const age = ((this.t * 0.45 + i / 3) % 1);
+      ctx.strokeStyle = `rgba(255,255,255,${0.18 * (1 - age)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(cx, waterY + 5, age * 42, age * 14, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Bobber — gentle bob
+    const bobberY = waterY - 4 + Math.sin(this.t * 1.6) * 6;
+    // Line
+    ctx.strokeStyle = 'rgba(220,220,255,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, 0);
+    ctx.quadraticCurveTo(cx, bobberY * 0.5, cx, bobberY - 24);
+    ctx.stroke();
+    this._drawBobber(ctx, cx, bobberY, 22, false);
+
+    // Fish shadow below surface
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.font = '34px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('🐟', cx + Math.sin(this.t * 0.38) * 38, waterY + 65 + Math.sin(this.t * 0.65) * 18);
+    ctx.restore();
+
+    // Status text
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(`📍 ${this.spot?.label ?? ''} · ${this.gameTime.timeOfDay} · ${this.gameTime.season}`, cx, ch * 0.86);
+    const dots = '.'.repeat(1 + Math.floor(this.t * 2) % 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(`Waiting for a bite${dots}`, cx, ch * 0.92);
+    ctx.fillStyle = 'rgba(255,100,100,0.65)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Tap to cancel', cx, ch * 0.97);
+  }
+
+  _drawQteHook(cw, ch) {
+    const ctx = this.ctx;
+    const cx  = cw / 2;
+    const waterY = ch * 0.48;
+
+    this._drawWaterScene(ctx, cw, ch, waterY);
+
     const progress = Math.max(0, this.qteTimer / this.qteTotalTime);
 
+    // Deterministic shake using stacked sines
+    const shakeX = Math.sin(this.t * 24.3) * 5 + Math.sin(this.t * 38.7) * 3;
+    const dipY   = Math.max(0, Math.sin(this.t * 7.2) * 28 + Math.sin(this.t * 3.5) * 14);
+    const bx     = cx + shakeX;
+    const bobberY = waterY - 4 + dipY;
+
+    // Line — shakes with bobber
+    ctx.strokeStyle = 'rgba(220,220,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, 0);
+    ctx.quadraticCurveTo(cx + shakeX * 0.4, bobberY * 0.4, bx, bobberY - 22);
+    ctx.stroke();
+
+    // Splash jets around waterline
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + this.t * 2.8;
+      const dist  = 22 + Math.sin(this.t * 4.1 + i) * 7;
+      const len   = 5 + Math.sin(this.t * 6.3 + i * 1.4) * 4;
+      ctx.strokeStyle = `rgba(120,210,255,${0.35 + Math.sin(this.t * 5 + i) * 0.18})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx + Math.cos(angle) * dist, waterY + Math.abs(Math.sin(angle)) * 8);
+      ctx.lineTo(bx + Math.cos(angle) * (dist + len), waterY + Math.abs(Math.sin(angle)) * 8 - len * 0.8);
+      ctx.stroke();
+    }
+
+    // Aggressive ripples
+    for (let i = 0; i < 3; i++) {
+      const age = ((this.t * 1.3 + i / 3) % 1);
+      ctx.strokeStyle = `rgba(100,200,255,${0.4 * (1 - age)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(bx, waterY + 5, age * 55, age * 18, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Bobber (partially submerged when dipping deep)
+    this._drawBobber(ctx, bx, bobberY, 22, dipY > 22);
+
+    // Fish name
     const rarityColors = { common:'#9E9E9E', uncommon:'#4CAF50', rare:'#2196F3', epic:'#9C27B0', legendary:'#FF9800' };
     const rc = rarityColors[this.pendingFish?.rarity ?? 'common'] ?? '#9E9E9E';
-
     ctx.textAlign = 'center';
     ctx.fillStyle = rc;
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(this.pendingFish?.name ?? '???', cx, py + ph * 0.16);
-    ctx.fillStyle = 'rgba(42,16,0,0.55)';
-    ctx.font = '12px sans-serif';
-    ctx.fillText(`${(this.pendingFish?.rarity ?? '').toUpperCase()} · ${this.pendingWeight} lbs`, cx, py + ph * 0.24);
-
-    // Track ring
-    ctx.strokeStyle = 'rgba(42,16,0,0.15)';
-    ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.stroke();
-
-    // Shrinking arc
-    const arcColor = progress > 0.5 ? '#4CAF50' : progress > 0.25 ? '#FFC107' : '#EF5350';
-    ctx.strokeStyle = arcColor;
-    ctx.lineWidth = 10;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
-    ctx.stroke();
-    ctx.lineCap = 'butt';
-
-    this._drawFishSilhouette(cx, cy, radius * 0.9, radius * 0.45, rc, false);
-
-    const pulse = 1 + Math.sin(this.t * 10) * 0.07;
-    ctx.fillStyle = arcColor;
-    ctx.font = `bold ${Math.round(22 * pulse)}px sans-serif`;
-    ctx.fillText('TAP TO HOOK!', cx, cy + radius + 28);
-    ctx.fillStyle = 'rgba(42,16,0,0.5)';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(this.pendingFish?.name ?? '???', cx, ch * 0.68);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '11px sans-serif';
-    ctx.fillText(this.qteTimer.toFixed(1) + 's', cx, cy + radius + 46);
+    ctx.fillText(`${(this.pendingFish?.rarity ?? '').toUpperCase()} · ${this.pendingWeight} lbs`, cx, ch * 0.72);
+
+    // TAP! pulsing
+    const pulse = 1 + Math.sin(this.t * 10) * 0.07;
+    ctx.fillStyle = `rgba(255,230,50,${0.9 + Math.sin(this.t * 8) * 0.1})`;
+    ctx.font = `bold ${Math.round(48 * pulse)}px sans-serif`;
+    ctx.fillText('TAP!', cx, ch * 0.86);
+
+    // Timer bar at top
+    const barW = cw * 0.55, barX = (cw - barW) / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    this._roundRect(barX, 18, barW, 6, 3); ctx.fill();
+    const barColor = progress > 0.5 ? '#4CAF50' : progress > 0.25 ? '#FFC107' : '#EF5350';
+    ctx.fillStyle = barColor;
+    this._roundRect(barX, 18, barW * progress, 6, 3); ctx.fill();
   }
 
   _drawReel(px, py, pw, ph) {
@@ -598,7 +693,7 @@ export class FishingScene {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#2A1000';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('HOLD TO REEL — RELEASE IN ZONE', cx, py + ph * 0.24);
+    ctx.fillText('HOLD IN ZONE = FAST PROGRESS', cx, py + ph * 0.24);
     ctx.fillStyle = rc;
     ctx.font = '11px sans-serif';
     ctx.fillText(`${this.pendingFish?.name ?? '???'} on the line!`, cx, py + ph * 0.31);
