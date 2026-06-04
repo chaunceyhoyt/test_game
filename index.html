@@ -132,6 +132,7 @@
       position: fixed;
       bottom: 0; left: 0; right: 0;
       height: 100vh;
+      height: 100dvh;
       border-radius: 0;
       transform: translateY(100%);
       transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
@@ -635,9 +636,8 @@
       background: rgba(0,0,0,0.35);
       z-index: 298;
       display: none;
-      pointer-events: none;
+      pointer-events: auto;
     }
-    #dialog-backdrop.open { display: block; pointer-events: auto; }
 
     #dialog-panel {
       position: fixed;
@@ -655,7 +655,6 @@
       font-family: inherit;
       touch-action: none;
     }
-    #dialog-panel.open { display: flex; }
 
     #dialog-portrait-box {
       width: 82px;

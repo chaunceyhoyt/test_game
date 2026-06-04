@@ -215,6 +215,7 @@ export class WorldScene {
   // ── Tap handling ───────────────────────────────────────────────────────────
 
   _handleTap(wx, wy) {
+    if (document.getElementById('dialog-panel')?.style.display === 'flex') return;
     // ── On boat ──
     if (this.playerOnBoat) {
       // Fishing spot?

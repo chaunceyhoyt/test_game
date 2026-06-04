@@ -5,23 +5,27 @@ export class DialogPanel {
     this._lineIdx   = 0;
     this._charIdx   = 0;
     this._charTimer = 0;
-    this._charSpeed = 0.038; // seconds per character
+    this._charSpeed = 0.038;
     this._choices   = [];
     this._onDone    = null;
 
     this._backdrop = document.createElement('div');
     this._backdrop.id = 'dialog-backdrop';
+    // Backdrop blocks all canvas input while dialog is open
+    this._backdrop.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this._backdrop.addEventListener('touchstart',  (e) => e.preventDefault(), { passive: false });
+    this._backdrop.addEventListener('click',       (e) => e.stopPropagation());
     document.body.appendChild(this._backdrop);
 
     this._el = document.createElement('div');
     this._el.id = 'dialog-panel';
-    document.body.appendChild(this._el);
-
     this._el.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.dialog-choice-btn')) return;
       e.stopPropagation();
+      if (e.target.closest('.dialog-choice-btn')) return;
       this._advance();
     });
+    this._el.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    document.body.appendChild(this._el);
   }
 
   // ── Public API ───────────────────────────────────────────────────────────────
@@ -37,15 +41,15 @@ export class DialogPanel {
     this._charTimer = 0;
     this._visible   = true;
 
-    this._backdrop.classList.add('open');
-    this._el.classList.add('open');
+    this._backdrop.style.display = 'block';
+    this._el.style.display       = 'flex';
     this._render();
   }
 
   hide() {
     this._visible = false;
-    this._backdrop.classList.remove('open');
-    this._el.classList.remove('open');
+    this._backdrop.style.display = 'none';
+    this._el.style.display       = 'none';
     const cb = this._onDone;
     this._onDone = null;
     cb?.();
@@ -112,10 +116,9 @@ export class DialogPanel {
   _updateText() {
     const textEl = this._el.querySelector('#dialog-text');
     if (!textEl) return;
-    const line      = this._lines[this._lineIdx] ?? '';
-    const shown     = line.slice(0, this._charIdx);
-    const done      = this._charIdx >= line.length;
-    textEl.textContent = shown + (done ? '' : '▌');
+    const line = this._lines[this._lineIdx] ?? '';
+    const done = this._charIdx >= line.length;
+    textEl.textContent = line.slice(0, this._charIdx) + (done ? '' : '▌');
     const hint = this._el.querySelector('#dialog-tap-hint');
     if (hint) hint.style.visibility = done ? 'visible' : 'hidden';
   }
