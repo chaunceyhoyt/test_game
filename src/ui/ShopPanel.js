@@ -12,10 +12,10 @@ export class ShopPanel {
     // Apply the same parchment/wood inline style as #inventory-panel
     Object.assign(this.el.style, {
       position:     'fixed',
+      top:          '0',
       left:         '0',
       right:        '0',
       bottom:       '0',
-      height:       '100vh',
       background:   'linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 55%, #E2CC84 100%)',
       color:        '#2A1000',
       borderTop:    '3px solid #7B4A22',

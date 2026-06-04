@@ -125,9 +125,10 @@ export class FishingScene {
       const now = Date.now();
       if (now - this.lastTapTime < 300 && this.jumpCooldown <= 0) {
         const newPos = Math.min(1, this.reelPos + 0.20);
-        this.reelPos      = newPos;
-        this.jumpCooldown = this.jumpCooldownMax;
-        this.lastTapTime  = 0;
+        this.reelPos          = newPos;
+        this.jumpCooldown     = this.jumpCooldownMax;
+        this.lastTapTime      = 0;
+        this._tensionFreeze   = 0.3; // suppress tension changes from the jump
         // Bonus progress if circle lands inside zone
         if (newPos >= this.zoneMin && newPos <= this.zoneMax) {
           this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
@@ -186,9 +187,10 @@ export class FishingScene {
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
     this.qteCount       = 0;
-    this.lastTapTime    = 0; // prevent accidental jump from hook tap
+    this.lastTapTime    = 0;
     this.jumpCooldown   = 0;
     this.jumpFlash      = 0;
+    this._tensionFreeze = 0;
     this.lineBroke      = false;
     this._boostTimer    = 4 + Math.random() * 4; // first fish lunge in 4-8 s
     this.inventory.useBait(); // consume bait on hook
@@ -337,16 +339,19 @@ export class FishingScene {
       }
 
       // Tick jump timers
-      if (this.jumpCooldown > 0) this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
-      if (this.jumpFlash    > 0) this.jumpFlash    = Math.max(0, this.jumpFlash    - dt * 2.5);
+      if (this.jumpCooldown   > 0) this.jumpCooldown   = Math.max(0, this.jumpCooldown   - dt);
+      if (this.jumpFlash      > 0) this.jumpFlash      = Math.max(0, this.jumpFlash      - dt * 2.5);
+      if (this._tensionFreeze > 0) this._tensionFreeze = Math.max(0, this._tensionFreeze - dt);
 
       // Hook: hold = reel right, release = fish pulls left
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Line tension
+      // Line tension (suppressed briefly after double-tap jump)
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-      if (inZone && this.reelHeld) {
+      if (this._tensionFreeze > 0) {
+        // no tension change
+      } else if (inZone && this.reelHeld) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06);
       } else if (inZone && !this.reelHeld) {
         // no change
@@ -360,7 +365,7 @@ export class FishingScene {
       if (this.reelHeld) {
         this.primaryMeter = Math.min(1, this.primaryMeter + dt * (inZone ? 0.09 : 0.03));
       } else if (inZone) {
-        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.03);
+        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.09);
       }
       // not holding + outside zone: no change
 
