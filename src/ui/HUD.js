@@ -14,23 +14,14 @@ export class HUD {
         <span class="hud-stat" id="hud-season"></span>
       </div>
       <div id="hud-bottom">
-        <button class="nav-btn" id="btn-map" title="Map">
-          <div class="nav-btn-icon">🗺️</div>
-          <span>Map</span>
-        </button>
-        <button class="nav-btn nav-btn-main" id="btn-action" title="Fish">
-          <div class="nav-btn-icon">🎣</div>
-        </button>
-        <button class="nav-btn" id="btn-bag" title="Tackle Box">
+        <button class="nav-btn nav-btn-main" id="btn-bag" title="Tackle Box">
           <div class="nav-btn-icon">🧰</div>
-          <span>Tackle Box</span>
         </button>
       </div>
     `;
     document.body.appendChild(this.el);
 
     document.getElementById('btn-bag').addEventListener('click', onOpenInventory);
-    document.getElementById('btn-map').addEventListener('click', onOpenInventory);
   }
 
   update() {
@@ -41,11 +32,6 @@ export class HUD {
 
     const seasonIcons = { spring: '🌸', summer: '☀️', fall: '🍂', winter: '❄️' };
     document.getElementById('hud-season').textContent = seasonIcons[this.gameTime.season] ?? '';
-  }
-
-  setActionLabel(label) {
-    const btn = document.getElementById('btn-action');
-    btn.querySelector('.nav-btn-icon').textContent = label === 'FISH' ? '🎣' : '🗺️';
   }
 
   destroy() {

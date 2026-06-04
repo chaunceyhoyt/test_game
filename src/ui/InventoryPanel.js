@@ -49,6 +49,7 @@ export class InventoryPanel {
         <button class="tab-btn" data-tab="dex">📖 FishDex</button>
         <button class="tab-btn" data-tab="boat">⛵ Boat</button>
         <button class="tab-btn" data-tab="look">🐱 Look</button>
+        <button class="tab-btn" data-tab="map">🗺️ Map</button>
       </div>
       <div id="panel-content" class="panel-content"></div>
     `;
@@ -93,6 +94,7 @@ export class InventoryPanel {
     if (this.activeTab === 'dex')       el.innerHTML = this._renderDex();
     if (this.activeTab === 'boat')      el.innerHTML = this._renderBoat();
     if (this.activeTab === 'look')      el.innerHTML = this._renderLook();
+    if (this.activeTab === 'map')       el.innerHTML = this._renderMap();
 
     // Equip pole
     el.querySelectorAll('.equip-btn[data-pole]').forEach(btn => {
@@ -461,6 +463,17 @@ export class InventoryPanel {
 
     html += `</div>`;
     return html;
+  }
+
+  _renderMap() {
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                  gap:12px; padding:32px 20px; color:var(--text-dim); text-align:center;">
+        <div style="font-size:48px;">🗺️</div>
+        <div style="font-size:1rem; font-weight:700; color:var(--text-main);">Map</div>
+        <div style="font-size:0.85rem; font-style:italic;">Coming soon — full world map with fishing spots, boat location, and points of interest.</div>
+      </div>
+    `;
   }
 
   destroy() { this.el.remove(); }
