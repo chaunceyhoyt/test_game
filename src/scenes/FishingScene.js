@@ -58,9 +58,11 @@ export class FishingScene {
     this.resultStars   = 1;
     this.resultTimer   = 0;
     this.escaped       = false;
+    this.lineBroke     = false;
 
     this.t    = 0;
     this.spot = null;
+    this._boostTimer = 0;
 
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerUp   = this._onPointerUp.bind(this);
@@ -173,13 +175,15 @@ export class FishingScene {
   _beginReel() {
     this.state          = 'reel';
     this.reelPos        = 0.15;
-    this.secondaryMeter = 0.5;
+    this.secondaryMeter = 0;   // tension starts at zero
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
     this.qteCount       = 0;
     this.lastTapTime    = 0; // prevent accidental jump from hook tap
     this.jumpCooldown   = 0;
     this.jumpFlash      = 0;
+    this.lineBroke      = false;
+    this._boostTimer    = 4 + Math.random() * 4; // first fish lunge in 4-8 s
     this.inventory.useBait(); // consume bait on hook
 
     const rarity    = this.pendingFish?.rarity ?? 'common';
@@ -252,21 +256,30 @@ export class FishingScene {
   _applyQteBoost(result) {
     this.qteBoostResult = result;
     this.qteBoostFlash  = 0.9;
-    this.secondaryMeter = 0.30;
+    this._boostTimer    = 4 + Math.random() * 4; // schedule next lunge
 
     if (result === 'perfect') {
       this.primaryMeter = Math.min(1, this.primaryMeter + 0.30);
-      this._vibrate([220]);           // long satisfying buzz
+      this._vibrate([220]);
     } else if (result === 'good') {
       this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
-      this._vibrate([110]);            // medium buzz
+      this._vibrate([110]);
     } else {
       this.primaryMeter = Math.max(0, this.primaryMeter - 0.20);
-      this._vibrate([70, 60, 70]);    // error rattle
+      this._vibrate([70, 60, 70]);
     }
 
     this.qteCount++;
     this._applyZoneWindow();
+  }
+
+  _lineBroken() {
+    this.state       = 'result';
+    this.escaped     = true;
+    this.lineBroke   = true;
+    this.resultTimer = 0;
+    this.resultFish  = null;
+    this._pendingVibrate = [80, 40, 80, 40, 400]; // snap rattle
   }
 
   _finishReel(caught) {
@@ -324,13 +337,14 @@ export class FishingScene {
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Secondary meter: fills in zone, drains out
+      // Line tension: up when holding outside zone, down when releasing, safe in zone
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-      if (inZone) {
-        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.28);
-      } else {
-        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * this.meterDrain);
+      if (this.reelHeld && !inZone) {
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.25);
+      } else if (!this.reelHeld) {
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.18);
       }
+      // holding in zone → no change; at 0 → no penalty
 
       // Catch progress: fills slowly when circle is in zone and player isn't touching
       if (inZone && !this.reelHeld) {
@@ -339,8 +353,12 @@ export class FishingScene {
         this.primaryMeter = Math.max(0, this.primaryMeter - dt * this.primaryDrain);
       }
 
-      if (this.secondaryMeter <= 0)  { this._finishReel(false); return; }
-      if (this.secondaryMeter >= 1)  { this._beginQteBoost();   return; }
+      // Line break at full tension
+      if (this.secondaryMeter >= 1) { this._lineBroken(); return; }
+
+      // Fish lunge QTE on timer
+      this._boostTimer -= dt;
+      if (this._boostTimer <= 0) { this._beginQteBoost(); return; }
       return;
     }
 
@@ -651,7 +669,7 @@ export class FishingScene {
     // ── Line Tension ──────────────────────────────────────────
     this._drawMeterBar(px, py, pw, ph, 0.63, this.secondaryMeter,
       'LINE TENSION', '#4CAF50',
-      this.secondaryMeter > 0.85 ? 'BOOST READY!' : null, '#3D7A1A');
+      this.secondaryMeter > 0.75 ? '⚠️ EASE UP — LINE NEAR BREAK' : null, '#C62828');
 
     // Fish silhouette
     this._drawFishSilhouette(cx, py + ph * 0.84, 60, 30, rc, true);
@@ -771,7 +789,7 @@ export class FishingScene {
 
     let color = fillColor;
     if (label === 'LINE TENSION') {
-      color = value > 0.6 ? '#3D7A1A' : value > 0.3 ? '#B8860B' : '#C62828';
+      color = value > 0.7 ? '#C62828' : value > 0.4 ? '#FFC107' : '#4CAF50';
     } else if (label === 'CATCH PROGRESS') {
       color = value > 0.7 ? '#C07020' : value > 0.35 ? '#B8860B' : '#888070';
     }
@@ -799,7 +817,17 @@ export class FishingScene {
     const cx  = px + pw / 2;
     ctx.textAlign = 'center';
 
-    if (this.escaped) {
+    if (this.lineBroke) {
+      ctx.fillStyle = '#C62828';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('Line snapped! 💔', cx, py + ph * 0.35);
+      ctx.fillStyle = 'rgba(42,16,0,0.65)';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Too much tension — bait lost', cx, py + ph * 0.50);
+      ctx.fillStyle = 'rgba(42,16,0,0.45)';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Tap to try again', cx, py + ph * 0.62);
+    } else if (this.escaped) {
       ctx.fillStyle = '#C62828';
       ctx.font = 'bold 26px sans-serif';
       ctx.fillText('It got away! 😞', cx, py + ph * 0.38);
