@@ -357,7 +357,7 @@ export class FishingScene {
       if (this.reelHeld) {
         this.primaryMeter = Math.min(1, this.primaryMeter + dt * (inZone ? 0.09 : 0.03));
       } else if (inZone) {
-        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.02);
+        this.primaryMeter = Math.min(1, this.primaryMeter + dt * 0.03);
       }
 
       // Catch complete
