@@ -15,12 +15,11 @@ export class ShopPanel {
       left:         '0',
       right:        '0',
       bottom:       '0',
-      height:       '70vh',
-      maxHeight:    '600px',
+      height:       '100vh',
       background:   'linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 55%, #E2CC84 100%)',
       color:        '#2A1000',
       borderTop:    '3px solid #7B4A22',
-      borderRadius: '16px 16px 0 0',
+      borderRadius: '0',
       overflowY:    'auto',
       transform:    'translateY(100%)',
       transition:   'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
@@ -190,7 +189,7 @@ export class ShopPanel {
     return `
       ${this._handleBarHtml()}
       <div style="display:flex; align-items:center; gap:8px; padding:8px 16px 4px;">
-        <button id="shop-back-btn" style="${this._backBtnStyle()}">← Back</button>
+        <button id="shop-back-btn" style="${this._backBtnStyle()}">👋 Leave Shop</button>
         <div style="font-size:1.1rem; font-weight:700;">🛒 Browse Goods</div>
         <div style="margin-left:auto; font-size:0.9rem; color:#7B4A22; font-weight:600;">💰 $${this.inventory.money}</div>
       </div>
@@ -260,7 +259,7 @@ export class ShopPanel {
     return `
       ${this._handleBarHtml()}
       <div style="display:flex; align-items:center; gap:8px; padding:8px 16px 0;">
-        <button id="shop-back-btn" style="${this._backBtnStyle()}">← Back</button>
+        <button id="shop-back-btn" style="${this._backBtnStyle()}">👋 Leave Shop</button>
         <div style="font-size:1.1rem; font-weight:700;">💰 Sell Fish</div>
         <div style="margin-left:auto; font-size:0.9rem; color:#7B4A22; font-weight:600;">💰 $${this.inventory.money}</div>
       </div>
@@ -315,11 +314,8 @@ export class ShopPanel {
 
     this.el.querySelector('#shop-leave-btn')?.addEventListener('click', () => this.close());
 
-    // Back button (buy & sell views)
-    this.el.querySelector('#shop-back-btn')?.addEventListener('click', () => {
-      this._state = 'greeting';
-      this._render();
-    });
+    // Leave shop button (buy & sell views)
+    this.el.querySelector('#shop-back-btn')?.addEventListener('click', () => this.close());
 
     // Buy tab switching
     this.el.querySelectorAll('[data-buy-tab]').forEach(btn => {
