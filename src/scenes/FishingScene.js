@@ -344,14 +344,15 @@ export class FishingScene {
       const target = this.reelHeld ? this.reelPos + dt * 0.30 : this.reelPos - dt * 0.38;
       this.reelPos = Math.max(0, Math.min(1, target));
 
-      // Line tension: up when holding outside zone, down when releasing, safe in zone
+      // Line tension: up when holding outside zone, slow rise in zone, drains when not holding
       const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-      if (this.reelHeld && !inZone) {
+      if (inZone) {
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06);
+      } else if (this.reelHeld && !inZone) {
         this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.25);
       } else if (!this.reelHeld) {
         this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.18);
       }
-      // holding in zone → no change; at 0 → no penalty
 
       // Catch progress: holding builds fast in zone, slow outside; not holding + in zone = slow drip
       if (this.reelHeld) {
