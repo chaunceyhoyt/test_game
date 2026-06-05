@@ -163,12 +163,15 @@ export class FishingScene {
 
   _onTouchMove(e) {
     e.preventDefault();
-    if (this.state !== 'reel' || !this.reelHeld || this._swipeTriggered || this.jumpCooldown > 0) return;
-    const dy      = (e.touches[0]?.clientY ?? 0) - this._touchStartY;
-    const elapsed = Date.now() - this._touchStartTime;
+    if (this.state !== 'reel' || !this.reelHeld || this.jumpCooldown > 0) return;
+    const currentY = e.touches[0]?.clientY ?? 0;
+    const dy       = currentY - this._touchStartY;
+    const elapsed  = Date.now() - this._touchStartTime;
     if (dy > 40 && elapsed < 350) {
       this._triggerSwipeDown();
-      this._swipeTriggered = true; // don't fire again on touchend
+      this._swipeTriggered = true;          // prevent touchend double-fire
+      this._touchStartY    = currentY;      // reset so next swipe (after cooldown) measures from here
+      this._touchStartTime = Date.now();
     }
   }
 
