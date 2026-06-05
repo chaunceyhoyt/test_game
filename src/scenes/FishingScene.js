@@ -60,9 +60,10 @@ export class FishingScene {
     this.escaped       = false;
     this.lineBroke     = false;
 
-    this.t    = 0;
-    this.spot = null;
-    this._boostTimer = 0;
+    this.t             = 0;
+    this.spot          = null;
+    this._boostTimer   = 0;
+    this._tensionMult  = 1;
 
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerUp   = this._onPointerUp.bind(this);
@@ -198,6 +199,11 @@ export class FishingScene {
     const rarity    = this.pendingFish?.rarity ?? 'common';
     const polePower = this.inventory.getEquippedPole().power;
     const fish      = this.pendingFish;
+
+    // Heavier fish build tension faster; better rods reduce the effect
+    // weightFactor: 0 (tiny) → 1 (20 lb fish). rodFactor: power 1 = 1.0, power 3 = 0.33
+    const weightFactor   = Math.min(1, this.pendingWeight / 20);
+    this._tensionMult    = 1 + weightFactor * (1 / polePower);
 
     // Base speed by rarity
     const raritySpeed = { common: 0.16, uncommon: 0.24, rare: 0.34, epic: 0.46, legendary: 0.62 };
@@ -354,9 +360,9 @@ export class FishingScene {
       } else if (!this.reelHeld) {
         this.secondaryMeter = Math.max(0, this.secondaryMeter - dt * 0.36);
       } else if (inZone) {
-        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06);
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.06 * this._tensionMult);
       } else {
-        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.15);
+        this.secondaryMeter = Math.min(1, this.secondaryMeter + dt * 0.15 * this._tensionMult);
       }
 
       // Catch progress
