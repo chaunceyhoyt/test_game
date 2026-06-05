@@ -200,8 +200,7 @@ export class WorldScene {
   }
 
   _initBoat() {
-    const cw = this.canvas.width;
-    this.boat.x = this.boat.tx = cw * 0.12;
+    this.boat.x = this.boat.tx = this.dockLeft - 22;
     this.boat.y = this.boat.ty = this.waterY - 8;
   }
 
@@ -225,10 +224,10 @@ export class WorldScene {
           return;
         }
       }
-      // Land or dock → deboard
+      // Land or dock → deboard (boat always returns to home slip west of dock)
       const tappedDock = wy >= this.dockY && wx >= this.dockLeft && wx <= this.dockRight;
       if (wy >= this.waterY - 4 || tappedDock) {
-        const shore = { x: Math.max(10, Math.min(this.canvas.width - 10, wx)), y: this.waterY - 6 };
+        const shore = { x: this.dockLeft - 22, y: this.waterY - 8 };
         const landPt = this._nearestWalkable(wx, wy);
         this._boatTarget = { x: shore.x, y: shore.y, type: 'dock', landTarget: landPt };
         return;
@@ -453,6 +452,7 @@ export class WorldScene {
     if (y >= this.waterY - 3) return false;
     if (y < 5) return false;
     if (x < 5 || x > this.canvas.width - 5) return false;
+    if (y >= this.dockY && x >= this.dockLeft && x <= this.dockRight) return false;
     return true;
   }
 
