@@ -31,11 +31,13 @@ export class ShopPanel {
 
     document.body.appendChild(this.el);
 
-    // Swipe-down to close
+    // Swipe-down to close — guard against stray touchend events from other elements
     let _startY = 0;
-    this.el.addEventListener('touchstart', e => { _startY = e.touches[0].clientY; }, { passive: true });
+    let _touchActive = false;
+    this.el.addEventListener('touchstart', e => { _startY = e.touches[0].clientY; _touchActive = true; }, { passive: true });
     this.el.addEventListener('touchend', e => {
-      if (e.changedTouches[0].clientY - _startY > 60) this.close();
+      if (_touchActive && e.changedTouches[0].clientY - _startY > 60) this.close();
+      _touchActive = false;
     }, { passive: true });
   }
 
@@ -355,10 +357,10 @@ export class ShopPanel {
     const overlay = document.createElement('div');
     overlay.id = 'shop-confirm-overlay';
     overlay.style.cssText = `
-      position:absolute; inset:0; z-index:10;
+      position:fixed; inset:0; z-index:210;
       background:rgba(42,16,0,0.72); backdrop-filter:blur(3px);
       display:flex; align-items:center; justify-content:center;
-      padding:24px; border-radius:inherit;
+      padding:24px;
     `;
     const newBal = this.inventory.money - item.price;
     overlay.innerHTML = `
@@ -394,8 +396,7 @@ export class ShopPanel {
         </div>
       </div>
     `;
-    this.el.style.position = 'relative';
-    this.el.appendChild(overlay);
+    document.body.appendChild(overlay);
 
     overlay.querySelector('#shop-confirm-cancel').addEventListener('click', () => this._removeConfirmOverlay());
     overlay.querySelector('#shop-confirm-buy').addEventListener('click', () => {
@@ -406,7 +407,7 @@ export class ShopPanel {
   }
 
   _removeConfirmOverlay() {
-    this.el.querySelector('#shop-confirm-overlay')?.remove();
+    document.getElementById('shop-confirm-overlay')?.remove();
   }
 
   destroy() { this.el.remove(); }
