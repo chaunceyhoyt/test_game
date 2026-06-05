@@ -26,8 +26,9 @@ export class FishingScene {
     this.zoneSpeedModTimer = 0;
     this.reelHeld        = false;
 
-    // Double-tap jump
-    this.lastTapTime     = 0;
+    // Swipe-down pull (reduces tension)
+    this._touchStartY    = 0;
+    this._touchStartTime = 0;
     this.jumpCooldown    = 0;
     this.jumpCooldownMax = 2.0;
     this.jumpFlash       = 0;
@@ -105,6 +106,11 @@ export class FishingScene {
     e.preventDefault();
     this.reelHeld = true;
 
+    // Track start position for swipe-down gesture detection
+    const startY = e.touches?.length ? e.touches[0].clientY : (e.clientY ?? 0);
+    this._touchStartY    = startY;
+    this._touchStartTime = Date.now();
+
     // Flush any vibration queued from the game loop (needs user-activation context)
     if (this._pendingVibrate) {
       this._vibrate(this._pendingVibrate);
@@ -122,28 +128,7 @@ export class FishingScene {
       return;
     }
 
-    if (this.state === 'reel') {
-      const now = Date.now();
-      if (now - this.lastTapTime < 300 && this.jumpCooldown <= 0) {
-        const newPos = Math.min(1, this.reelPos + 0.20);
-        this.reelPos          = newPos;
-        this.jumpCooldown     = this.jumpCooldownMax;
-        this.lastTapTime      = 0;
-        this._tensionFreeze   = 0.3; // suppress tension changes from the jump
-        // Bonus progress if circle lands inside zone
-        if (newPos >= this.zoneMin && newPos <= this.zoneMax) {
-          this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
-          this.jumpFlash    = 0.9;
-          this._vibrate([50, 30, 200]);
-        } else {
-          this.jumpFlash = 0.45;
-          this._vibrate([80]);
-        }
-      } else {
-        this.lastTapTime = now;
-      }
-      return;
-    }
+    if (this.state === 'reel') return; // swipe gesture handled on pointer-up
 
     if (this.state === 'qte_boost' && this.qteBoostResult === null) {
       const outerRadius = 85 * (1 - this.qteBoostTimer / this.qteBoostTotal);
@@ -159,7 +144,29 @@ export class FishingScene {
     }
   }
 
-  _onPointerUp() { this.reelHeld = false; }
+  _onPointerUp(e) {
+    this.reelHeld = false;
+    if (this.state === 'reel' && this.jumpCooldown <= 0) {
+      const endY   = e.changedTouches?.length ? e.changedTouches[0].clientY : (e.clientY ?? 0);
+      const dy      = endY - this._touchStartY;
+      const elapsed = Date.now() - this._touchStartTime;
+      if (dy > 40 && elapsed < 350) {
+        // Swipe-down: pull back on the rod — freeze tension and ease the line
+        this._tensionFreeze = 0.3;
+        this.secondaryMeter = Math.max(0, this.secondaryMeter - 0.15);
+        this.jumpCooldown   = this.jumpCooldownMax;
+        const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
+        if (inZone) {
+          this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
+          this.jumpFlash    = 0.9;
+          this._vibrate([50, 30, 200]);
+        } else {
+          this.jumpFlash = 0.45;
+          this._vibrate([80]);
+        }
+      }
+    }
+  }
 
   // ── State transitions ──────────────────────────────────────────────────────
 
@@ -188,7 +195,6 @@ export class FishingScene {
     this.primaryMeter   = 0;
     this.zoneDir        = 1;
     this.qteCount       = 0;
-    this.lastTapTime    = 0;
     this.jumpCooldown   = 0;
     this.jumpFlash      = 0;
     this._tensionFreeze = 0;
@@ -767,7 +773,7 @@ export class FishingScene {
       ? `rgba(140,80,0,${jpulse})`
       : 'rgba(42,16,0,0.28)';
     ctx.font = 'bold 9px sans-serif';
-    ctx.fillText('⚡ DOUBLE TAP TO JUMP', cx, jy + 3.5);
+    ctx.fillText('⬇ SWIPE DOWN TO EASE TENSION', cx, jy + 3.5);
 
     if (!jumpReady) {
       const cdProg = 1 - (this.jumpCooldown / this.jumpCooldownMax);

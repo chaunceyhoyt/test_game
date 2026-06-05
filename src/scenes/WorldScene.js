@@ -493,9 +493,10 @@ export class WorldScene {
       this._boatTarget = null;
 
       if (tgt.type === 'dock') {
-        // Deboard player
+        // Deboard player at the dock entrance (inside dock x-range so they can
+        // walk to any dock or land target without hitting the water boundary)
         this.playerOnBoat  = false;
-        this.player.x  = b.x;
+        this.player.x  = this.dockLeft + 10;
         this.player.y  = this.waterY + 8;
         if (tgt.landTarget) {
           this.player.tx    = tgt.landTarget.x;
