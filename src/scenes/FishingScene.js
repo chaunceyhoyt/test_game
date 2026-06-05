@@ -26,9 +26,10 @@ export class FishingScene {
     this.zoneSpeedModTimer = 0;
     this.reelHeld        = false;
 
-    // Swipe-down pull (reduces tension)
+    // Swipe-down pull
     this._touchStartY    = 0;
     this._touchStartTime = 0;
+    this._swipeTriggered = false;
     this.jumpCooldown    = 0;
     this.jumpCooldownMax = 2.0;
     this.jumpFlash       = 0;
@@ -68,10 +69,12 @@ export class FishingScene {
 
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerUp   = this._onPointerUp.bind(this);
+    this._onTouchMove   = this._onTouchMove.bind(this);
     canvas.addEventListener('mousedown',  this._onPointerDown);
     canvas.addEventListener('mouseup',    this._onPointerUp);
     canvas.addEventListener('touchstart', this._onPointerDown, { passive: false });
     canvas.addEventListener('touchend',   this._onPointerUp,   { passive: false });
+    canvas.addEventListener('touchmove',  this._onTouchMove,   { passive: false });
   }
 
   start(spot) {
@@ -98,6 +101,7 @@ export class FishingScene {
     this.canvas.removeEventListener('mouseup',    this._onPointerUp);
     this.canvas.removeEventListener('touchstart', this._onPointerDown);
     this.canvas.removeEventListener('touchend',   this._onPointerUp);
+    this.canvas.removeEventListener('touchmove',  this._onTouchMove);
   }
 
   // ── Input ──────────────────────────────────────────────────────────────────
@@ -110,6 +114,7 @@ export class FishingScene {
     const startY = e.touches?.length ? e.touches[0].clientY : (e.clientY ?? 0);
     this._touchStartY    = startY;
     this._touchStartTime = Date.now();
+    this._swipeTriggered = false;
 
     // Flush any vibration queued from the game loop (needs user-activation context)
     if (this._pendingVibrate) {
@@ -146,25 +151,39 @@ export class FishingScene {
 
   _onPointerUp(e) {
     this.reelHeld = false;
-    if (this.state === 'reel' && this.jumpCooldown <= 0) {
-      const endY   = e.changedTouches?.length ? e.changedTouches[0].clientY : (e.clientY ?? 0);
+    // Catch swipe-down that completed on release (not already fired by touchmove)
+    if (this.state === 'reel' && this.jumpCooldown <= 0 && !this._swipeTriggered) {
+      const endY    = e.changedTouches?.length ? e.changedTouches[0].clientY : (e.clientY ?? 0);
       const dy      = endY - this._touchStartY;
       const elapsed = Date.now() - this._touchStartTime;
-      if (dy > 40 && elapsed < 350) {
-        // Swipe-down: pull back on the rod — freeze tension and ease the line
-        this._tensionFreeze = 0.3;
-        this.secondaryMeter = Math.max(0, this.secondaryMeter - 0.15);
-        this.jumpCooldown   = this.jumpCooldownMax;
-        const inZone = this.reelPos >= this.zoneMin && this.reelPos <= this.zoneMax;
-        if (inZone) {
-          this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
-          this.jumpFlash    = 0.9;
-          this._vibrate([50, 30, 200]);
-        } else {
-          this.jumpFlash = 0.45;
-          this._vibrate([80]);
-        }
-      }
+      if (dy > 40 && elapsed < 350) this._triggerSwipeDown();
+    }
+    this._swipeTriggered = false;
+  }
+
+  _onTouchMove(e) {
+    e.preventDefault();
+    if (this.state !== 'reel' || !this.reelHeld || this._swipeTriggered || this.jumpCooldown > 0) return;
+    const dy      = (e.touches[0]?.clientY ?? 0) - this._touchStartY;
+    const elapsed = Date.now() - this._touchStartTime;
+    if (dy > 40 && elapsed < 350) {
+      this._triggerSwipeDown();
+      this._swipeTriggered = true; // don't fire again on touchend
+    }
+  }
+
+  _triggerSwipeDown() {
+    const newPos = Math.min(1, this.reelPos + 0.20);
+    this.reelPos        = newPos;
+    this.jumpCooldown   = this.jumpCooldownMax;
+    this._tensionFreeze = 0.3;
+    if (newPos >= this.zoneMin && newPos <= this.zoneMax) {
+      this.primaryMeter = Math.min(1, this.primaryMeter + 0.15);
+      this.jumpFlash    = 0.9;
+      this._vibrate([50, 30, 200]);
+    } else {
+      this.jumpFlash = 0.45;
+      this._vibrate([80]);
     }
   }
 
