@@ -1,7 +1,8 @@
 export class GameTime {
   constructor() {
-    this.gameMinutes = 480; // Start at 8:00 AM
-    this.speed = 60;        // 1 real second = 1 game minute
+    this.gameMinutes    = 480;
+    this.speed          = 60;
+    this._seasonOverride = null;
   }
 
   update(dt) {
@@ -20,11 +21,21 @@ export class GameTime {
   }
 
   get season() {
+    if (this._seasonOverride) return this._seasonOverride;
     const m = new Date().getMonth();
     if (m >= 2 && m <= 4) return 'spring';
     if (m >= 5 && m <= 7) return 'summer';
     if (m >= 8 && m <= 10) return 'fall';
     return 'winter';
+  }
+
+  setTimeOfDay(tod) {
+    const hours = { morning: 7, afternoon: 12, evening: 18, night: 22 };
+    this.gameMinutes = (hours[tod] ?? 12) * 60;
+  }
+
+  setSeason(s) {
+    this._seasonOverride = s || null;
   }
 
   get displayTime() {

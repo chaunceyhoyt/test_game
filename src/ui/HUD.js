@@ -1,5 +1,5 @@
 export class HUD {
-  constructor(inventory, gameTime, onOpenInventory) {
+  constructor(inventory, gameTime, onOpenInventory, onOpenSettings) {
     this.inventory = inventory;
     this.gameTime  = gameTime;
 
@@ -14,6 +14,9 @@ export class HUD {
         <span class="hud-stat" id="hud-season"></span>
       </div>
       <div id="hud-bottom">
+        <button class="nav-btn" id="btn-settings" title="Settings">
+          <div class="nav-btn-icon">⚙️</div>
+        </button>
         <button class="nav-btn nav-btn-main" id="btn-bag" title="Tackle Box">
           <div class="nav-btn-icon">🧰</div>
         </button>
@@ -22,6 +25,7 @@ export class HUD {
     document.body.appendChild(this.el);
 
     document.getElementById('btn-bag').addEventListener('click', onOpenInventory);
+    document.getElementById('btn-settings').addEventListener('click', onOpenSettings);
   }
 
   update() {

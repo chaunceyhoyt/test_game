@@ -47,6 +47,8 @@ import { HUD }                 from './ui/HUD.js';
 import { InventoryPanel }      from './ui/InventoryPanel.js';
 import { ShopPanel }           from './ui/ShopPanel.js';
 import { DialogPanel }         from './ui/DialogPanel.js';
+import { SettingsPanel }       from './ui/SettingsPanel.js';
+import { DebugOverlay }        from './ui/DebugOverlay.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
@@ -59,7 +61,14 @@ const selector   = new FishSelector(fishDb);
 const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const hud         = new HUD(inventory, gameTime, () => invPanel.toggle());
+const settings     = { musicVolume: 80, sfxVolume: 80, debugMode: false };
+const debugOverlay = new DebugOverlay(gameTime);
+
+const settingsPanel = new SettingsPanel(settings, (key, value) => {
+  if (key === 'debugMode') value ? debugOverlay.show() : debugOverlay.hide();
+});
+
+const hud         = new HUD(inventory, gameTime, () => invPanel.toggle(), () => settingsPanel.open());
 const invPanel    = new InventoryPanel(inventory, fishDb, appearance);
 const shopPanel   = new ShopPanel(inventory, fishDb);
 const dialogPanel = new DialogPanel();
@@ -145,6 +154,7 @@ function loop(timestamp) {
   if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
 
   hud.update();
+  if (settings.debugMode) debugOverlay.update(gameTime);
   requestAnimationFrame(loop);
 }
 
