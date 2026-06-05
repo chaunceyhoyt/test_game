@@ -225,8 +225,9 @@ export class WorldScene {
           return;
         }
       }
-      // Land → dock + deboard
-      if (wy >= this.waterY - 4) {
+      // Land or dock → deboard
+      const tappedDock = wy >= this.dockY && wx >= this.dockLeft && wx <= this.dockRight;
+      if (wy >= this.waterY - 4 || tappedDock) {
         const shore = { x: Math.max(10, Math.min(this.canvas.width - 10, wx)), y: this.waterY - 6 };
         const landPt = this._nearestWalkable(wx, wy);
         this._boatTarget = { x: shore.x, y: shore.y, type: 'dock', landTarget: landPt };
@@ -360,8 +361,11 @@ export class WorldScene {
   _nearestWalkable(x, y) {
     let nx = x, ny = y;
     if (ny < this.waterY) {
-      nx = Math.max(this.dockLeft + 10, Math.min(this.dockRight - 10, nx));
-      ny = Math.max(this.waterY + 2, ny);
+      const onDock = nx >= this.dockLeft && nx <= this.dockRight && ny >= this.dockY;
+      if (!onDock) {
+        nx = Math.max(this.dockLeft + 10, Math.min(this.dockRight - 10, nx));
+        ny = Math.max(this.waterY + 2, ny);
+      }
     }
     for (const obs of this.obstacles) {
       const d = Math.hypot(nx - obs.x, ny - obs.y);
@@ -535,12 +539,12 @@ export class WorldScene {
 
     this._drawSky(cw, ch);
     this._drawWater(cw, ch);
+    this._drawBoat();
     this._drawDock(cw, ch);
     this._drawLand(cw, ch);
     this._drawTrees(cw, ch);
     this._drawShop();
     this._drawFishingSpots();
-    this._drawBoat();
     this._drawWalkParticles();
     if (!this.playerOnBoat) this._drawPlayer();
     this._drawSpotLabels();
