@@ -165,12 +165,15 @@ export class FishingScene {
     e.preventDefault();
     if (this.state !== 'reel' || !this.reelHeld || this.jumpCooldown > 0) return;
     const currentY = e.touches[0]?.clientY ?? 0;
-    const dy       = currentY - this._touchStartY;
-    const elapsed  = Date.now() - this._touchStartTime;
-    if (dy > 40 && elapsed < 350) {
+    // Keep baseline at the highest (smallest Y) point so downward distance
+    // is always measured from the peak — no time limit needed here.
+    if (currentY < this._touchStartY) {
+      this._touchStartY = currentY;
+    }
+    if (currentY - this._touchStartY > 40) {
       this._triggerSwipeDown();
-      this._swipeTriggered = true;          // prevent touchend double-fire
-      this._touchStartY    = currentY;      // reset so next swipe (after cooldown) measures from here
+      this._swipeTriggered = true;
+      this._touchStartY    = currentY;
       this._touchStartTime = Date.now();
     }
   }
