@@ -35,7 +35,7 @@ export class DebugOverlay {
         </div>
       </div>
       <div class="debug-section">
-        <div class="debug-label">WEATHER</div>
+        <div class="debug-label">WEATHER — <span id="dbg-weather-cur">—</span></div>
         <div class="debug-btns">
           <button data-weather="auto">🔄 Auto</button>
           <button data-weather="clear">☀️ Clear</button>
@@ -91,6 +91,8 @@ export class DebugOverlay {
     if (this._weatherSystem) {
       const active = this._weatherSystem._override ?? 'auto';
       this._weatherBtns.forEach(b => b.classList.toggle('dbg-active', b.dataset.weather === active));
+      const cur = document.getElementById('dbg-weather-cur');
+      if (cur) cur.textContent = this._weatherSystem.weather;
     }
   }
 

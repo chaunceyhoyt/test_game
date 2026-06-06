@@ -12,10 +12,10 @@ const CFG = {
 };
 
 const SEASON_TABLE = {
-  winter: ['clear','clear','snow','snow','snow','blizzard','fog','aurora'],
-  spring: ['clear','clear','rain','rain','thunderstorm','petals','fog'],
-  summer: ['clear','clear','clear','rain','thunderstorm','fireflies'],
-  fall:   ['clear','rain','rain','thunderstorm','leaves','fog'],
+  winter: ['snow','snow','snow','blizzard','snow','fog','aurora','clear'],
+  spring: ['rain','rain','thunderstorm','petals','rain','fog','clear'],
+  summer: ['rain','thunderstorm','rain','fireflies','clear','thunderstorm'],
+  fall:   ['leaves','rain','thunderstorm','rain','leaves','fog','clear'],
 };
 
 const LEAF_COLORS = ['#D4722A','#E8922C','#C0392B','#8B4513','#DAA520','#CD853F'];
@@ -56,7 +56,7 @@ export class WeatherSystem {
     const next  = table[Math.floor(Math.random() * table.length)];
     this.current = next;
     this._applyWeather(next);
-    this._changeTimer = 90 + Math.random() * 150;
+    this._changeTimer = 20 + Math.random() * 40;
   }
 
   _applyWeather(type) {
