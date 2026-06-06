@@ -49,6 +49,7 @@ import { ShopPanel }           from './ui/ShopPanel.js';
 import { DialogPanel }         from './ui/DialogPanel.js';
 import { SettingsPanel }       from './ui/SettingsPanel.js';
 import { DebugOverlay }        from './ui/DebugOverlay.js';
+import { WeatherSystem }       from './systems/WeatherSystem.js';
 
 // ── Setup ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('game');
@@ -61,8 +62,9 @@ const selector   = new FishSelector(fishDb);
 const appearance = new CharacterAppearance();
 
 // ── UI ───────────────────────────────────────────────────────────────────────
-const settings     = { musicVolume: 80, sfxVolume: 80, debugMode: false };
-const debugOverlay = new DebugOverlay(gameTime);
+const settings       = { musicVolume: 80, sfxVolume: 80, debugMode: false };
+const weatherSystem  = new WeatherSystem(gameTime);
+const debugOverlay   = new DebugOverlay(gameTime, weatherSystem);
 
 const settingsPanel = new SettingsPanel(settings, (key, value) => {
   if (key === 'debugMode') value ? debugOverlay.show() : debugOverlay.hide();
@@ -152,6 +154,9 @@ function loop(timestamp) {
 
   if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
   if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
+
+  weatherSystem.update(dt);
+  weatherSystem.draw(ctx, canvas.width, canvas.height);
 
   hud.update();
   if (settings.debugMode) debugOverlay.update(gameTime);
