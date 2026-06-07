@@ -1,7 +1,7 @@
 const FUEL_DRAIN = 0.5; // fuel units per second of motor use
 
 export class WorldScene {
-  constructor(canvas, gameTime, onStartFishing, state = null, appearance = null, inventory = null, onOpenShop = null) {
+  constructor(canvas, gameTime, onStartFishing, state = null, appearance = null, inventory = null, onOpenShop = null, onEnterHome = null) {
     this.canvas        = canvas;
     this.ctx           = canvas.getContext('2d');
     this.gameTime      = gameTime;
@@ -9,6 +9,7 @@ export class WorldScene {
     this.appearance    = appearance;
     this.inventory     = inventory;
     this.onOpenShop    = onOpenShop;
+    this.onEnterHome   = onEnterHome;
 
     this.player = { x: 0, y: 0, tx: 0, ty: 0, speed: 130, state: 'idle', pendingSpot: null, _path: [], _pathIdx: 0 };
     this.boat   = { x: 0, y: 0, tx: 0, ty: 0, heading: -Math.PI / 2 };
@@ -179,10 +180,12 @@ export class WorldScene {
     ];
 
     this.shop = { x: cw * 0.62, y: ch * 0.72 };
+    this.home = { x: cw * 0.20, y: ch * 0.72 };
 
     this.obstacles = [
       ...this.trees.map(tr => ({ x: tr.x, y: tr.y, r: 22 })),
       { x: this.shop.x, y: this.shop.y - 10, r: 32 },
+      { x: this.home.x, y: this.home.y - 10, r: 30 },
     ];
 
     if (this.player.x) {
@@ -252,6 +255,16 @@ export class WorldScene {
         this.boardingBoat = true;
         return;
       }
+    }
+
+    // Tap home building
+    if (Math.hypot(wx - this.home.x, wy - this.home.y) < 48) {
+      const target = this._nearestWalkable(this.home.x, this.home.y + 28);
+      this._walkTo(target.x, target.y);
+      this.player.pendingSpot   = null;
+      this._pendingInteraction  = 'home';
+      this.boardingBoat         = false;
+      return;
     }
 
     // Tap shop building
@@ -400,6 +413,12 @@ export class WorldScene {
       this.onOpenShop?.();
     }
 
+    // Home interaction trigger
+    if (this._pendingInteraction === 'home' && this.player.state === 'idle') {
+      this._pendingInteraction = null;
+      this.onEnterHome?.();
+    }
+
     // Ambient ripples
     if (Math.random() < dt * 2) {
       const spot = this.spots[Math.floor(Math.random() * this.spots.length)];
@@ -544,6 +563,7 @@ export class WorldScene {
     this._drawDock(cw, ch);
     this._drawLand(cw, ch);
     this._drawTrees(cw, ch);
+    this._drawHome();
     this._drawShop();
     this._drawFishingSpots();
     this._drawWalkParticles();
@@ -673,6 +693,101 @@ export class WorldScene {
       ctx.fillStyle = '#388E3C';
       ctx.beginPath(); ctx.arc(tr.x, tr.y - 26,  8, 0, Math.PI * 2); ctx.fill();
     }
+  }
+
+  _drawHome() {
+    const ctx = this.ctx;
+    const { x, y } = this.home;
+    const bw = 56, bh = 44;
+
+    // Building body (cream walls)
+    ctx.fillStyle = '#F2E0BC';
+    ctx.fillRect(x - bw / 2, y - bh, bw, bh);
+
+    // Wood grain lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x - bw / 2, y - bh + i * (bh / 5));
+      ctx.lineTo(x + bw / 2, y - bh + i * (bh / 5));
+      ctx.stroke();
+    }
+
+    // Peaked roof (red)
+    ctx.fillStyle = '#B03030';
+    ctx.beginPath();
+    ctx.moveTo(x - bw / 2 - 6, y - bh);
+    ctx.lineTo(x,               y - bh - 22);
+    ctx.lineTo(x + bw / 2 + 6, y - bh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#7A1A1A';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Chimney
+    ctx.fillStyle = '#8B5A2A';
+    ctx.fillRect(x + bw * 0.25, y - bh - 28, 8, 16);
+    // Chimney smoke puffs
+    ctx.fillStyle = 'rgba(180,180,180,0.5)';
+    for (let i = 0; i < 3; i++) {
+      const puffX = x + bw * 0.25 + 4 + Math.sin(this.t * 0.6 + i) * 4;
+      const puffY = y - bh - 32 - i * 8;
+      const puffR = 3 + i * 1.5;
+      ctx.beginPath(); ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Door (arched)
+    ctx.fillStyle = '#7B4A22';
+    ctx.fillRect(x - 8, y - 22, 16, 22);
+    ctx.beginPath(); ctx.arc(x, y - 22, 8, Math.PI, 0); ctx.fill();
+
+    // Door knob
+    ctx.fillStyle = '#D4A060';
+    ctx.beginPath(); ctx.arc(x + 5, y - 10, 2, 0, Math.PI * 2); ctx.fill();
+
+    // Windows (warm glow)
+    const winGlow = 0.6 + 0.15 * Math.sin(this.t * 1.8);
+    ctx.fillStyle = `rgba(255,210,80,${winGlow})`;
+    ctx.fillRect(x - bw / 2 + 7, y - bh + 8, 11, 8);
+    ctx.fillRect(x + bw / 2 - 18, y - bh + 8, 11, 8);
+    ctx.strokeStyle = '#5C3D1E';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - bw / 2 + 7, y - bh + 8, 11, 8);
+    ctx.strokeRect(x + bw / 2 - 18, y - bh + 8, 11, 8);
+    // Window crossbars
+    ctx.beginPath(); ctx.moveTo(x - bw / 2 + 12, y - bh + 8); ctx.lineTo(x - bw / 2 + 12, y - bh + 16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - bw / 2 + 7, y - bh + 12); ctx.lineTo(x - bw / 2 + 18, y - bh + 12); ctx.stroke();
+
+    // Flower boxes
+    ctx.fillStyle = '#8B5A2A';
+    ctx.fillRect(x - bw / 2 + 5, y - bh + 16, 15, 4);
+    ctx.fillRect(x + bw / 2 - 20, y - bh + 16, 15, 4);
+    const flowerColors = ['#FF6B8A', '#FFD700', '#FF8C42'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = flowerColors[i];
+      ctx.beginPath(); ctx.arc(x - bw / 2 + 9 + i * 5, y - bh + 15, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + bw / 2 - 16 + i * 5, y - bh + 15, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Sign
+    ctx.fillStyle = '#D4A060';
+    ctx.fillRect(x - 24, y - bh - 8, 48, 12);
+    ctx.strokeStyle = '#7B4A22';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 24, y - bh - 8, 48, 12);
+    ctx.fillStyle = '#2A1000';
+    ctx.font = 'bold 7px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('HOME', x, y - bh + 1);
+
+    // Label
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('TAP TO ENTER', x, y + 6);
+    ctx.globalAlpha = 1;
   }
 
   _drawShop() {

@@ -954,6 +954,229 @@
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
+
+    /* ── Home Panels (Aquarium + Challenges) ─────────────────── */
+    #home-aquarium-panel,
+    #home-challenges-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      max-height: 70vh;
+      z-index: 350;
+      flex-direction: column;
+      background: linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 60%, #E2CC84 100%);
+      border-top: 3px solid #7B4A22;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -6px 28px rgba(0,0,0,0.45);
+      color: #2A1000;
+    }
+
+    .home-panel-header {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(90,50,20,0.18);
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .home-panel-header span { flex: 1; }
+
+    .home-panel-close {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: rgba(90,50,20,0.12);
+      border: 1px solid rgba(90,50,20,0.22);
+      color: rgba(42,16,0,0.7);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .home-panel-close:active { background: rgba(90,50,20,0.25); }
+
+    .home-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px 16px;
+      overscroll-behavior: contain;
+    }
+    .home-panel-body::-webkit-scrollbar { width: 4px; }
+    .home-panel-body::-webkit-scrollbar-thumb { background: rgba(90,50,20,0.25); border-radius: 2px; }
+
+    /* Aquarium */
+    .aq-cap-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(42,16,0,0.65);
+      margin-bottom: 10px;
+    }
+    .aq-cap-track {
+      flex: 1;
+      height: 7px;
+      background: rgba(90,50,20,0.15);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .aq-cap-fill {
+      height: 100%;
+      background: #2196F3;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+    .aq-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(42,16,0,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 10px 0 6px;
+    }
+    .aq-fish-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,248,220,0.65);
+      border: 1px solid rgba(90,50,20,0.15);
+      margin-bottom: 6px;
+    }
+    .aq-dot { font-size: 10px; flex-shrink: 0; }
+    .aq-fish-name { flex: 1; font-size: 13px; font-weight: 700; }
+    .aq-fish-weight { font-size: 11px; color: rgba(42,16,0,0.55); white-space: nowrap; }
+    .aq-return-btn, .aq-place-btn {
+      font-size: 11px; font-weight: 700;
+      border-radius: 9px; padding: 3px 10px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .aq-return-btn {
+      background: rgba(198,40,40,0.12);
+      color: #C62828; border: 1px solid #C62828;
+    }
+    .aq-return-btn:active { background: rgba(198,40,40,0.28); }
+    .aq-place-btn {
+      background: rgba(61,122,26,0.15);
+      color: #3D7A1A; border: 1px solid #3D7A1A;
+    }
+    .aq-place-btn:active { background: rgba(61,122,26,0.3); }
+    .aq-full-label { font-size: 11px; color: rgba(42,16,0,0.35); font-style: italic; }
+    .aq-empty {
+      text-align: center;
+      color: rgba(42,16,0,0.45);
+      font-size: 13px;
+      padding: 24px 0;
+    }
+
+    /* Challenges */
+    .ch-card {
+      background: rgba(255,248,220,0.65);
+      border: 1.5px solid rgba(90,50,20,0.15);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      transition: border-color 0.2s;
+    }
+    .ch-card.ch-done { border-color: rgba(76,175,80,0.5); }
+    .ch-card.ch-claimed { background: rgba(220,240,215,0.7); border-color: rgba(76,175,80,0.4); }
+    .ch-bonus-card { border-style: dashed; border-color: rgba(200,160,30,0.45); }
+    .ch-card-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ch-icon { font-size: 18px; flex-shrink: 0; }
+    .ch-desc { flex: 1; font-size: 13px; font-weight: 700; }
+    .ch-reward { font-size: 13px; font-weight: 800; color: #7B4A00; white-space: nowrap; }
+    .ch-progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .ch-progress-track {
+      flex: 1;
+      height: 7px;
+      background: rgba(90,50,20,0.12);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .ch-progress-fill {
+      height: 100%;
+      background: #2196F3;
+      border-radius: 4px;
+      transition: width 0.35s;
+    }
+    .ch-fill-done { background: #4CAF50; }
+    .ch-progress-label { font-size: 11px; color: rgba(42,16,0,0.55); white-space: nowrap; }
+    .ch-claim-btn {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      border-radius: 9px;
+      background: rgba(76,175,80,0.18);
+      color: #2E7D32;
+      border: 1.5px solid #4CAF50;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 4px;
+      transition: background 0.15s;
+    }
+    .ch-claim-btn:active { background: rgba(76,175,80,0.35); }
+    .ch-claimed-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #2E7D32;
+      margin-top: 4px;
+    }
+
+    /* Sleep confirm */
+    #home-sleep-confirm {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 360;
+      align-items: center;
+      justify-content: center;
+    }
+    .sleep-dialog {
+      background: linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 100%);
+      border: 2px solid #7B4A22;
+      border-radius: 18px;
+      padding: 24px 28px 20px;
+      text-align: center;
+      width: min(300px, 88vw);
+      color: #2A1000;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .sleep-icon { font-size: 36px; margin-bottom: 8px; }
+    .sleep-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .sleep-sub { font-size: 12px; color: rgba(42,16,0,0.6); margin-bottom: 18px; }
+    .sleep-btns { display: flex; gap: 10px; justify-content: center; }
+    .sleep-cancel-btn, .sleep-ok-btn {
+      flex: 1;
+      padding: 11px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .sleep-cancel-btn {
+      background: rgba(90,50,20,0.1);
+      border: 1.5px solid rgba(90,50,20,0.28);
+      color: rgba(42,16,0,0.7);
+    }
+    .sleep-cancel-btn:active { background: rgba(90,50,20,0.22); }
+    .sleep-ok-btn {
+      background: rgba(61,122,26,0.18);
+      border: 1.5px solid #4CAF50;
+      color: #2E7D32;
+    }
+    .sleep-ok-btn:active { background: rgba(61,122,26,0.35); }
   </style>
 </head>
 <body>

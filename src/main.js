@@ -43,6 +43,8 @@ import { FishSelector }        from './systems/FishSelector.js';
 import { CharacterAppearance } from './systems/CharacterAppearance.js';
 import { WorldScene }          from './scenes/WorldScene.js';
 import { FishingScene }        from './scenes/FishingScene.js';
+import { HomeScene }           from './scenes/HomeScene.js';
+import { DailyChallenges }     from './systems/DailyChallenges.js';
 import { HUD }                 from './ui/HUD.js';
 import { InventoryPanel }      from './ui/InventoryPanel.js';
 import { ShopPanel }           from './ui/ShopPanel.js';
@@ -55,11 +57,14 @@ import { WeatherSystem }       from './systems/WeatherSystem.js';
 const canvas = document.getElementById('game');
 const ctx    = canvas.getContext('2d');
 
-const gameTime   = new GameTime();
-const fishDb     = new FishDatabase();
-const inventory  = new Inventory();
-const selector   = new FishSelector(fishDb);
-const appearance = new CharacterAppearance();
+const gameTime        = new GameTime();
+const fishDb          = new FishDatabase();
+const inventory       = new Inventory();
+const selector        = new FishSelector(fishDb);
+const appearance      = new CharacterAppearance();
+const dailyChallenges = new DailyChallenges();
+
+inventory.onSell = (count, earned) => dailyChallenges.onFishSold(count, earned);
 
 // ── UI ───────────────────────────────────────────────────────────────────────
 const settings       = { musicVolume: 80, sfxVolume: 80, debugMode: false };
@@ -92,12 +97,14 @@ const SHOP_NPC_DIALOG = {
 
 // ── Scenes ───────────────────────────────────────────────────────────────────
 let activeScene = 'world';
-let worldScene, fishingScene;
+let worldScene, fishingScene, homeScene;
 let worldState  = null; // full world state persisted across fishing trips
 
 function startWorld(state) {
   fishingScene?.destroy();
   fishingScene = null;
+  homeScene?.destroy();
+  homeScene    = null;
   activeScene  = 'world';
   worldScene   = new WorldScene(
     canvas, gameTime,
@@ -105,8 +112,26 @@ function startWorld(state) {
     state,
     appearance,
     inventory,
-    () => dialogPanel.show(SHOP_NPC_DIALOG)
+    () => dialogPanel.show(SHOP_NPC_DIALOG),
+    () => startHome()
   );
+}
+
+function startHome() {
+  worldState = worldScene?.getState();
+  worldScene?.destroy();
+  worldScene  = null;
+  activeScene = 'home';
+  homeScene   = new HomeScene(
+    canvas, gameTime, inventory, dailyChallenges, weatherSystem, appearance,
+    () => endHome()
+  );
+}
+
+function endHome() {
+  homeScene?.destroy();
+  homeScene   = null;
+  startWorld(worldState);
 }
 
 function startFishing(spot) {
@@ -115,7 +140,10 @@ function startFishing(spot) {
   worldScene?.destroy();
   worldScene   = null;
   fishingScene = new FishingScene(canvas, selector, inventory, gameTime, (result) => {
-    if (result) showCatchToast(result.fish, result.weight);
+    if (result) {
+      showCatchToast(result.fish, result.weight);
+      dailyChallenges.onFishCaught(result.fish, result.weight, weatherSystem.weather);
+    }
     startWorld(worldState);
   });
   fishingScene.start(spot);
@@ -152,8 +180,9 @@ function loop(timestamp) {
   gameTime.update(dt);
   dialogPanel.update(dt);
 
-  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
-  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
+  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene.draw(); }
+  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene.draw(); }
+  if (activeScene === 'home'    && homeScene)    { homeScene.update(dt);    homeScene.draw(); }
 
   weatherSystem.update(dt);
   weatherSystem.draw(ctx, canvas.width, canvas.height);
