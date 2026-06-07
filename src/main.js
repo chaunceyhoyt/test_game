@@ -76,7 +76,7 @@ const settingsPanel = new SettingsPanel(settings, (key, value) => {
 });
 
 const hud         = new HUD(inventory, gameTime, () => invPanel.toggle(), () => settingsPanel.open());
-const invPanel    = new InventoryPanel(inventory, fishDb, appearance);
+const invPanel    = new InventoryPanel(inventory, fishDb, appearance, dailyChallenges);
 const shopPanel   = new ShopPanel(inventory, fishDb);
 const dialogPanel = new DialogPanel();
 
@@ -188,7 +188,7 @@ function loop(timestamp) {
   else if (activeScene === 'home'    && hs) { hs.update(dt); hs === homeScene    && hs.draw(); }
 
   weatherSystem.update(dt);
-  weatherSystem.draw(ctx, canvas.width, canvas.height);
+  if (activeScene !== 'home') weatherSystem.draw(ctx, canvas.width, canvas.height);
 
   hud.update();
   if (settings.debugMode) debugOverlay.update(gameTime);

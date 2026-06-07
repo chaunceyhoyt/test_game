@@ -19,7 +19,6 @@ export class HomeScene {
     this._initBubbles();
     this._buildSleepConfirm();
     this._buildAquariumPanel();
-    this._buildChallengesPanel();
     this._bindInput();
   }
 
@@ -30,8 +29,8 @@ export class HomeScene {
   _spawnBubble(spread = false) {
     const cw = this.canvas.width, ch = this.canvas.height;
     return {
-      x: cw * 0.05 + Math.random() * cw * 0.36,
-      y: spread ? ch * 0.12 + Math.random() * ch * 0.26 : ch * 0.38,
+      x: cw * 0.05 + Math.random() * cw * 0.38,
+      y: spread ? ch * 0.10 + Math.random() * ch * 0.25 : ch * 0.355,
       vy: -(18 + Math.random() * 28),
       r: 1.5 + Math.random() * 2.5,
     };
@@ -75,31 +74,25 @@ export class HomeScene {
     const fx = sx / cw, fy = sy / ch;
 
     // Exit door
-    if (fx >= 0.43 && fx <= 0.57 && fy >= 0.78 && fy <= 0.97) {
+    if (fx >= 0.43 && fx <= 0.57 && fy >= 0.64 && fy <= 0.95) {
       this._closeAllPanels();
       this.onExit();
       return;
     }
     // Bed
-    if (fx >= 0.03 && fx <= 0.32 && fy >= 0.48 && fy <= 0.82) {
+    if (fx >= 0.03 && fx <= 0.32 && fy >= 0.46 && fy <= 0.80) {
       this._closeAllPanels();
       this._sleepConfirmEl.style.display = 'flex';
       return;
     }
     // Aquarium
-    if (fx >= 0.03 && fx <= 0.43 && fy >= 0.07 && fy <= 0.42) {
+    if (fx >= 0.03 && fx <= 0.47 && fy >= 0.065 && fy <= 0.37) {
       document.getElementById('home-challenges-panel').style.display = 'none';
       this._openAquariumPanel();
       return;
     }
-    // Challenges board
-    if (fx >= 0.58 && fx <= 0.97 && fy >= 0.44 && fy <= 0.86) {
-      document.getElementById('home-aquarium-panel').style.display = 'none';
-      this._openChallengesPanel();
-      return;
-    }
     // Trophy shelf
-    if (fx >= 0.58 && fx <= 0.97 && fy >= 0.07 && fy <= 0.40) {
+    if (fx >= 0.58 && fx <= 0.97 && fy >= 0.065 && fy <= 0.37) {
       this._closeAllPanels();
       return;
     }
@@ -382,7 +375,7 @@ export class HomeScene {
     this._drawWindow(cw, ch);
     this._drawTrophyShelf(cw, ch);
     this._drawBed(cw, ch);
-    this._drawChallengesBoard(cw, ch);
+    this._drawRodRack(cw, ch);
     this._drawDoor(cw, ch);
     this._drawZzz();
 
@@ -409,47 +402,47 @@ export class HomeScene {
   _drawRoom(cw, ch) {
     const ctx = this.ctx;
 
-    // Back wall
+    // Back wall (ceiling beam to baseboard)
     ctx.fillStyle = '#F5E6C8';
-    ctx.fillRect(0, 0, cw, ch * 0.44);
+    ctx.fillRect(0, 0, cw, ch * 0.38);
 
     // Wallpaper vertical stripes
     ctx.fillStyle = 'rgba(180,140,90,0.07)';
     const stripeW = cw * 0.04;
-    for (let x = 0; x < cw; x += stripeW * 2) ctx.fillRect(x, 0, stripeW, ch * 0.44);
+    for (let x = 0; x < cw; x += stripeW * 2) ctx.fillRect(x, 0, stripeW, ch * 0.38);
 
-    // Baseboard trim
+    // Baseboard trim (ch*0.37 to ch*0.40)
     ctx.fillStyle = '#A07040';
-    ctx.fillRect(0, ch * 0.405, cw, ch * 0.025);
+    ctx.fillRect(0, ch * 0.37, cw, ch * 0.03);
 
-    // Floor (warm wood planks)
-    const floorGrad = ctx.createLinearGradient(0, ch * 0.43, 0, ch);
+    // Floor (warm wood planks, ch*0.38 to ch*1.0)
+    const floorGrad = ctx.createLinearGradient(0, ch * 0.38, 0, ch);
     floorGrad.addColorStop(0, '#C8873C');
     floorGrad.addColorStop(1, '#8B5E2A');
     ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, ch * 0.43, cw, ch * 0.57);
+    ctx.fillRect(0, ch * 0.38, cw, ch * 0.62);
 
     // Plank lines
     ctx.strokeStyle = 'rgba(0,0,0,0.09)';
     ctx.lineWidth = 1;
     const plankH = ch * 0.042;
-    for (let y = ch * 0.43; y < ch; y += plankH) {
+    for (let y = ch * 0.38; y < ch; y += plankH) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke();
     }
     const plankW = cw * 0.16;
     for (let x = 0; x < cw; x += plankW) {
-      ctx.beginPath(); ctx.moveTo(x, ch * 0.43); ctx.lineTo(x, ch); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, ch * 0.38); ctx.lineTo(x, ch); ctx.stroke();
     }
 
-    // Ceiling beam
+    // Ceiling beam (0 to ch*0.046)
     ctx.fillStyle = '#7B4A22';
-    ctx.fillRect(0, 0, cw, ch * 0.048);
+    ctx.fillRect(0, 0, cw, ch * 0.046);
 
     // Hanging lamp cord
     const lampX = cw / 2;
     ctx.strokeStyle = '#5C3D1E';
     ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(lampX, ch * 0.048); ctx.lineTo(lampX, ch * 0.095); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lampX, ch * 0.046); ctx.lineTo(lampX, ch * 0.095); ctx.stroke();
 
     // Lamp shade
     ctx.fillStyle = '#D4A060';
@@ -474,8 +467,8 @@ export class HomeScene {
 
   _drawAquariumVisual(cw, ch) {
     const ctx = this.ctx;
-    const x1 = cw * 0.03, y1 = ch * 0.07;
-    const aw = cw * 0.40, ah = ch * 0.33;
+    const x1 = cw * 0.03, y1 = ch * 0.065;
+    const aw = cw * 0.44, ah = ch * 0.30;
     const x2 = x1 + aw, y2 = y1 + ah;
 
     // Water fill
@@ -587,8 +580,8 @@ export class HomeScene {
 
   _drawTrophyShelf(cw, ch) {
     const ctx = this.ctx;
-    const sx = cw * 0.58, sy = ch * 0.07;
-    const sw = cw * 0.39, sh = ch * 0.31;
+    const sx = cw * 0.58, sy = ch * 0.065;
+    const sw = cw * 0.39, sh = ch * 0.30;
 
     // Cork background
     ctx.fillStyle = '#C8A060';
@@ -671,8 +664,8 @@ export class HomeScene {
 
   _drawBed(cw, ch) {
     const ctx = this.ctx;
-    const bx = cw * 0.03, by = ch * 0.50;
-    const bw = cw * 0.29, bh = ch * 0.30;
+    const bx = cw * 0.03, by = ch * 0.46;
+    const bw = cw * 0.29, bh = ch * 0.32;
 
     // Headboard
     ctx.fillStyle = '#5C3D1E';
@@ -714,89 +707,146 @@ export class HomeScene {
     ctx.textAlign = 'left';
   }
 
-  _drawChallengesBoard(cw, ch) {
+  _drawRodRack(cw, ch) {
     const ctx = this.ctx;
-    const bx = cw * 0.58, by = ch * 0.44;
-    const bw = cw * 0.39, bh = ch * 0.38;
+    const rx = cw * 0.60, ry = ch * 0.44;
+    const rw = cw * 0.37, rh = ch * 0.36;
 
-    // Cork
-    ctx.fillStyle = '#C8955A';
-    ctx.fillRect(bx, by, bw, bh);
+    // Wall-mounted wooden rack backing panel
+    ctx.fillStyle = '#8B5E2A';
+    this._roundRect(rx, ry, rw, rh * 0.28, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#5C3D1E';
+    ctx.lineWidth = 2;
+    this._roundRect(rx, ry, rw, rh * 0.28, 4);
+    ctx.stroke();
 
-    ctx.fillStyle = 'rgba(160,100,40,0.25)';
-    for (let i = 0; i < 22; i++) {
-      const cx = bx + (i * 47 % bw);
-      const cy = by + (i * 31 % bh);
-      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+    // Wood grain lines on rack panel
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const gx = rx + rw * (i / 4);
+      ctx.beginPath(); ctx.moveTo(gx, ry); ctx.lineTo(gx, ry + rh * 0.28); ctx.stroke();
     }
 
-    ctx.strokeStyle = '#7B4A22';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(bx, by, bw, bh);
+    // Rack mounting hooks (small pegs along top rail)
+    ctx.fillStyle = '#5C3D1E';
+    const hookPositions = [0.15, 0.38, 0.62, 0.85];
+    for (const hp of hookPositions) {
+      const hx = rx + rw * hp;
+      ctx.beginPath(); ctx.arc(hx, ry + rh * 0.14, rw * 0.028, 0, Math.PI * 2); ctx.fill();
+    }
 
-    // Day header
-    ctx.fillStyle = '#3E2000';
-    ctx.font = `bold ${Math.round(ch * 0.019)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`📋 Day ${this.dailyChallenges.day}`, bx + bw / 2, by + ch * 0.033);
-
-    // 3 paper slips
-    const dc = this.dailyChallenges;
-    const slipH = bh * 0.23;
-    const slipGap = bh * 0.03;
-    const slipY0 = by + bh * 0.11;
+    // Fishing rods leaning against the rack (3 rods)
+    const rodColors = ['#7B4A22', '#5C3D1E', '#9B6A30'];
+    const rodTipColors = ['#C8A060', '#A07040', '#D4B070'];
+    const rodAngles = [-0.10, 0.0, 0.10];
+    const rodBaseX = [rx + rw * 0.18, rx + rw * 0.50, rx + rw * 0.82];
+    const rodLen = rh * 0.72;
 
     for (let i = 0; i < 3; i++) {
-      const slot = dc._challenges[i];
-      if (!slot) continue;
-      const prog = dc.getProgress(i);
-      const t = slot.template;
-      const done = dc.isComplete(i);
-      const claimed = slot.claimed;
-      const sy2 = slipY0 + i * (slipH + slipGap);
-      const sw = bw * 0.88, shx = bx + bw * 0.06;
+      ctx.save();
+      ctx.translate(rodBaseX[i], ry + rh * 0.26);
+      ctx.rotate(rodAngles[i]);
 
-      ctx.fillStyle = claimed ? '#C8E8C0' : (done ? '#FFFFD0' : '#FFF8E8');
-      this._roundRect(shx, sy2, sw, slipH, 3);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(90,50,20,0.2)';
+      // Rod shaft (tapered line)
+      ctx.strokeStyle = rodColors[i];
+      ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -rodLen * 0.55); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -rodLen * 0.55); ctx.lineTo(0, -rodLen); ctx.stroke();
+
+      // Rod tip (bright accent)
+      ctx.strokeStyle = rodTipColors[i];
       ctx.lineWidth = 1;
-      this._roundRect(shx, sy2, sw, slipH, 3);
+      ctx.beginPath(); ctx.moveTo(0, -rodLen * 0.90); ctx.lineTo(0, -rodLen); ctx.stroke();
+
+      // Reel at grip
+      ctx.fillStyle = '#3E3E3E';
+      ctx.beginPath(); ctx.ellipse(0, -rh * 0.08, rw * 0.035, rh * 0.022, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
       ctx.stroke();
 
-      // Tack
-      ctx.fillStyle = claimed ? '#4CAF50' : (done ? '#FFD700' : '#EF5350');
-      ctx.beginPath(); ctx.arc(shx + sw * 0.5, sy2 + 5, 3.5, 0, Math.PI * 2); ctx.fill();
-
-      ctx.fillStyle = '#3E2000';
-      ctx.font = `bold ${Math.round(ch * 0.015)}px sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${t.icon} ${t.desc}`, shx + sw * 0.05, sy2 + slipH * 0.42);
-
-      ctx.font = `${Math.round(ch * 0.013)}px sans-serif`;
-      ctx.fillStyle = claimed ? '#2E7D32' : '#555';
-      ctx.fillText(claimed ? '✓ Claimed' : `${prog.current}/${prog.total} — $${t.reward}`, shx + sw * 0.05, sy2 + slipH * 0.72);
-
-      if (!claimed) {
-        const pct = prog.current / prog.total;
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        ctx.fillRect(shx + sw * 0.05, sy2 + slipH * 0.84, sw * 0.90, 4);
-        ctx.fillStyle = done ? '#4CAF50' : '#2196F3';
-        ctx.fillRect(shx + sw * 0.05, sy2 + slipH * 0.84, sw * 0.90 * pct, 4);
+      // Guide rings along shaft
+      ctx.strokeStyle = '#C0C0C0';
+      ctx.lineWidth = 1;
+      for (let g = 1; g <= 3; g++) {
+        const gy = -rodLen * (0.25 + g * 0.18);
+        ctx.beginPath(); ctx.arc(0, gy, 3, 0, Math.PI * 2); ctx.stroke();
       }
+
+      // Fishing line (thin, light)
+      ctx.strokeStyle = 'rgba(200,220,255,0.5)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(0, -rodLen); ctx.lineTo(rw * 0.04, -rodLen + rh * 0.04); ctx.stroke();
+
+      ctx.restore();
     }
 
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.font = `${Math.round(ch * 0.015)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText('TAP TO VIEW', bx + bw / 2, by + bh + ch * 0.027);
+    // Tackle box shelf below the rack (small wooden shelf)
+    const shelfY = ry + rh * 0.80;
+    ctx.fillStyle = '#7B4A22';
+    ctx.fillRect(rx, shelfY, rw, rh * 0.055);
+    ctx.strokeStyle = '#5C3D1E';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(rx, shelfY, rw, rh * 0.055);
+
+    // Shelf bracket supports
+    ctx.fillStyle = '#5C3D1E';
+    ctx.fillRect(rx + rw * 0.08, shelfY, rw * 0.04, rh * 0.10);
+    ctx.fillRect(rx + rw * 0.88, shelfY, rw * 0.04, rh * 0.10);
+
+    // Tackle boxes on the shelf
+    const boxColors = ['#3A7A3A', '#3A3A8A', '#8A3A3A'];
+    const boxPositions = [0.08, 0.40, 0.72];
+    for (let i = 0; i < 3; i++) {
+      const bx2 = rx + rw * boxPositions[i];
+      const boxY = shelfY - rh * 0.095;
+      const boxW = rw * 0.22, boxH = rh * 0.10;
+      ctx.fillStyle = boxColors[i];
+      this._roundRect(bx2, boxY, boxW, boxH, 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      this._roundRect(bx2, boxY, boxW, boxH, 2);
+      ctx.stroke();
+      // Latch on box
+      ctx.fillStyle = '#C8A060';
+      ctx.fillRect(bx2 + boxW * 0.40, boxY + boxH * 0.35, boxW * 0.20, boxH * 0.30);
+    }
+
+    // Small hook board on the wall beside rack (decorative)
+    const hbX = rx + rw * 0.02, hbY = ry + rh * 0.30;
+    ctx.fillStyle = '#9B6A30';
+    ctx.fillRect(hbX, hbY, rw * 0.96, rh * 0.07);
+    ctx.strokeStyle = '#5C3D1E';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(hbX, hbY, rw * 0.96, rh * 0.07);
+
+    // Hooks on hook board
+    ctx.strokeStyle = '#C8C8C8';
+    ctx.lineWidth = 1.5;
+    const hookBoardPositions = [0.12, 0.28, 0.44, 0.60, 0.76, 0.92];
+    for (const hp of hookBoardPositions) {
+      const hkX = hbX + rw * 0.96 * hp;
+      const hkY = hbY + rh * 0.035;
+      ctx.beginPath();
+      ctx.arc(hkX, hkY, rw * 0.018, Math.PI, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hkX + rw * 0.018, hkY);
+      ctx.lineTo(hkX + rw * 0.018, hkY + rh * 0.025);
+      ctx.stroke();
+    }
+
     ctx.textAlign = 'left';
   }
 
   _drawDoor(cw, ch) {
     const ctx = this.ctx;
-    const dx = cw * 0.44, dy = ch * 0.68;
-    const dw = cw * 0.13, dh = ch * 0.24;
+    const dx = cw * 0.44, dy = ch * 0.64;
+    const dw = cw * 0.13, dh = ch * 0.28;
 
     // Door frame
     ctx.fillStyle = '#5C3D1E';

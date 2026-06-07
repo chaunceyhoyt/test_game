@@ -43,13 +43,14 @@ const BOAT_COLORS = [
 ];
 
 export class InventoryPanel {
-  constructor(inventory, fishDb, appearance) {
-    this.inventory     = inventory;
-    this.fishDb        = fishDb;
-    this.appearance    = appearance;
-    this.activeTab     = 'inventory';
-    this.activeSubTab  = 'fish';
-    this.isOpen        = false;
+  constructor(inventory, fishDb, appearance, dailyChallenges) {
+    this.inventory       = inventory;
+    this.fishDb          = fishDb;
+    this.appearance      = appearance;
+    this.dailyChallenges = dailyChallenges;
+    this.activeTab       = 'inventory';
+    this.activeSubTab    = 'fish';
+    this.isOpen          = false;
 
     this.el = document.createElement('div');
     this.el.id = 'inventory-panel';
@@ -59,6 +60,7 @@ export class InventoryPanel {
         <button class="tab-btn" data-tab="map">🗺️ Map</button>
         <button class="tab-btn active" data-tab="inventory">🎒 Inventory</button>
         <button class="tab-btn" data-tab="fishdex">📖 FishDex</button>
+        <button class="tab-btn" data-tab="goals">📋 Goals</button>
         <button class="tab-btn" data-tab="style">🎨 Style</button>
       </div>
       <div id="panel-subtabs" class="panel-subtabs">
@@ -128,7 +130,22 @@ export class InventoryPanel {
     if (this.activeTab === 'inventory' && this.activeSubTab === 'fish')   el.innerHTML = this._renderFish();
     if (this.activeTab === 'inventory' && this.activeSubTab === 'gear')   el.innerHTML = this._renderGear();
     if (this.activeTab === 'fishdex')                                     el.innerHTML = this._renderDex();
+    if (this.activeTab === 'goals')                                       el.innerHTML = this._renderGoals();
     if (this.activeTab === 'style')                                       el.innerHTML = this._renderStyle();
+
+    // Claim challenge rewards
+    el.querySelectorAll('.ch-claim-btn[data-claim-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.dailyChallenges?.claimReward(parseInt(btn.dataset.claimIdx), this.inventory);
+        this._render();
+      });
+    });
+    el.querySelectorAll('.ch-claim-btn[data-claim-bonus]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.dailyChallenges?.claimBonus(this.inventory);
+        this._render();
+      });
+    });
 
     // Equip pole
     el.querySelectorAll('.equip-btn[data-pole]').forEach(btn => {
@@ -511,6 +528,65 @@ export class InventoryPanel {
       </div>
       <div class="char-hint">More options coming — accessories &amp; hats soon!</div>
     `;
+  }
+
+  _renderGoals() {
+    const dc = this.dailyChallenges;
+    if (!dc) return `<div class="empty-msg">No goals available.</div>`;
+
+    const challenges = dc.challenges;
+    let html = `<div style="padding:10px 16px 4px;font-size:12px;color:var(--text-dim)">Day ${dc.day} &nbsp;·&nbsp; Daily Challenges</div>`;
+
+    for (let i = 0; i < challenges.length; i++) {
+      const slot    = challenges[i];
+      const { template, claimed } = slot;
+      const { current, total }   = dc.getProgress(i);
+      const complete = dc.isComplete(i);
+      const pct      = Math.min(100, (current / total) * 100).toFixed(0);
+
+      const claimBtn = claimed
+        ? `<div class="ch-claimed-badge">✓ Claimed</div>`
+        : complete
+          ? `<button class="ch-claim-btn" data-claim-idx="${i}">Claim $${template.reward}</button>`
+          : '';
+
+      html += `
+        <div class="ch-card${complete ? ' ch-done' : ''}${claimed ? ' ch-claimed' : ''}">
+          <div class="ch-card-top">
+            <span class="ch-icon">${template.icon}</span>
+            <div class="ch-desc">${template.desc}</div>
+            <div class="ch-reward">$${template.reward}</div>
+          </div>
+          <div class="ch-progress-wrap">
+            <div class="ch-progress-track">
+              <div class="ch-progress-fill${claimed ? ' ch-fill-done' : ''}" style="width:${pct}%"></div>
+            </div>
+            <div class="ch-progress-label">${current} / ${total}</div>
+          </div>
+          ${claimBtn}
+        </div>`;
+    }
+
+    const allClaimed   = challenges.every(s => s.claimed);
+    const bonusClaimed = dc.bonusClaimed;
+    const doneCount    = challenges.filter((_, i) => dc.isComplete(i)).length;
+
+    html += `
+      <div class="ch-bonus-card${bonusClaimed ? ' ch-claimed' : allClaimed ? ' ch-done' : ''}">
+        <div class="ch-card-top">
+          <span class="ch-icon">🌟</span>
+          <div class="ch-desc">Complete all 3 daily challenges</div>
+          <div class="ch-reward">$200</div>
+        </div>
+        ${bonusClaimed
+          ? `<div class="ch-claimed-badge">✓ Bonus Claimed!</div>`
+          : allClaimed
+            ? `<button class="ch-claim-btn" data-claim-bonus="1">Claim Bonus $200</button>`
+            : `<div class="ch-progress-label" style="font-size:11px;color:var(--text-dim)">${doneCount}/3 complete</div>`
+        }
+      </div>`;
+
+    return html;
   }
 
   _renderMap() {

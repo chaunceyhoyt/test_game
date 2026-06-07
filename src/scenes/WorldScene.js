@@ -30,6 +30,9 @@ export class WorldScene {
     this.walkParticles = [];
     this.t             = 0;
 
+    this._shopOwnerState = Math.random() < 0.5 ? 'counter' : 'sweeping';
+    this._shopOwnerTimer = 15 + Math.random() * 15;
+
     this._initSpots();
 
     // Apply saved or default player position
@@ -419,6 +422,13 @@ export class WorldScene {
       this.onEnterHome?.();
     }
 
+    // Shop owner state toggle
+    this._shopOwnerTimer -= dt;
+    if (this._shopOwnerTimer <= 0) {
+      this._shopOwnerState = this._shopOwnerState === 'counter' ? 'sweeping' : 'counter';
+      this._shopOwnerTimer = 15 + Math.random() * 15;
+    }
+
     // Ambient ripples
     if (Math.random() < dt * 2) {
       const spot = this.spots[Math.floor(Math.random() * this.spots.length)];
@@ -793,61 +803,107 @@ export class WorldScene {
   _drawShop() {
     const ctx = this.ctx;
     const { x, y } = this.shop;
-    const bw = 58, bh = 46;
+    const sw = 72;
 
-    // Building body
-    ctx.fillStyle = '#8B6340';
-    ctx.fillRect(x - bw / 2, y - bh, bw, bh);
+    // Back panel / stall wall
+    ctx.fillStyle = '#C8A87A';
+    ctx.fillRect(x - sw / 2, y - 46, sw, 46);
 
-    // Roof
-    ctx.fillStyle = '#5C3D1E';
-    ctx.beginPath();
-    ctx.moveTo(x - bw / 2 - 6, y - bh);
-    ctx.lineTo(x,               y - bh - 22);
-    ctx.lineTo(x + bw / 2 + 6, y - bh);
-    ctx.closePath();
-    ctx.fill();
+    // Vertical support posts
+    ctx.fillStyle = '#7B4A22';
+    ctx.fillRect(x - sw / 2 - 4, y - 58, 7, 58);
+    ctx.fillRect(x + sw / 2 - 3, y - 58, 7, 58);
 
-    // Wood grain lines on walls
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 5; i++) {
+    // Striped awning
+    const awW = sw + 18, awH = 18;
+    const awX = x - awW / 2, awY = y - 58;
+    const stripes = 8, strW = awW / stripes;
+    for (let i = 0; i < stripes; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#D32F2F' : '#F5F5F5';
+      ctx.fillRect(awX + i * strW, awY, strW + 0.5, awH);
+    }
+    // Scalloped awning edge
+    const scallops = 9, scW = awW / scallops;
+    for (let i = 0; i < scallops; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#D32F2F' : '#F5F5F5';
       ctx.beginPath();
-      ctx.moveTo(x - bw / 2, y - bh + i * (bh / 5));
-      ctx.lineTo(x + bw / 2, y - bh + i * (bh / 5));
-      ctx.stroke();
+      ctx.arc(awX + i * scW + scW / 2, awY + awH, scW / 2, 0, Math.PI);
+      ctx.fill();
     }
 
-    // Door
-    ctx.fillStyle = '#5C3D1E';
-    ctx.fillRect(x - 9, y - 22, 18, 22);
-    ctx.fillStyle = '#D4A060';
-    ctx.beginPath(); ctx.arc(x + 5, y - 11, 2, 0, Math.PI * 2); ctx.fill(); // knob
+    // Colorful pennant flags on a string
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x - sw / 2, awY);
+    ctx.quadraticCurveTo(x, awY + 6, x + sw / 2, awY);
+    ctx.stroke();
+    const flagColors = ['#E53935','#FB8C00','#FDD835','#43A047','#1E88E5','#8E24AA'];
+    for (let i = 0; i < 6; i++) {
+      const fx = x - sw / 2 + 6 + i * (sw / 6);
+      const fdy = Math.sin((i / 5) * Math.PI) * 6;
+      ctx.fillStyle = flagColors[i];
+      ctx.beginPath();
+      ctx.moveTo(fx, awY + fdy);
+      ctx.lineTo(fx - 4, awY + fdy + 8);
+      ctx.lineTo(fx + 4, awY + fdy + 8);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    // Windows
-    ctx.fillStyle = '#B3E0FF';
-    ctx.fillRect(x - bw / 2 + 7, y - bh + 8,  12, 9);
-    ctx.fillRect(x + bw / 2 - 19, y - bh + 8, 12, 9);
-    ctx.strokeStyle = '#5C3D1E';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - bw / 2 + 7, y - bh + 8,  12, 9);
-    ctx.strokeRect(x + bw / 2 - 19, y - bh + 8, 12, 9);
+    // Counter ledge
+    ctx.fillStyle = '#8B5A2A';
+    ctx.fillRect(x - sw / 2 - 3, y - 16, sw + 6, 9);
+    ctx.fillStyle = '#A07850';
+    ctx.fillRect(x - sw / 2 - 3, y - 16, sw + 6, 2);
 
-    // Sign
-    ctx.fillStyle = '#D4A060';
-    ctx.fillRect(x - 26, y - bh - 7, 52, 13);
-    ctx.strokeStyle = '#7B4A22';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x - 26, y - bh - 7, 52, 13);
-    ctx.fillStyle = '#2A1000';
-    ctx.font = 'bold 8px monospace';
+    // Fish display on counter
+    const fishColors = ['#90CAF9','#A5D6A7','#FFCC80','#EF9A9A','#CE93D8'];
+    for (let i = 0; i < 5; i++) {
+      const fx = x - 26 + i * 13;
+      const fy = y - 22;
+      ctx.fillStyle = fishColors[i];
+      ctx.beginPath(); ctx.ellipse(fx, fy, 6, 3.5, 0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(fx + 6, fy);
+      ctx.lineTo(fx + 10, fy - 3);
+      ctx.lineTo(fx + 10, fy + 3);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Crate left side
+    ctx.fillStyle = '#8B6340';
+    ctx.fillRect(x - sw / 2 - 14, y - 12, 12, 12);
+    ctx.strokeStyle = '#5C3D1E'; ctx.lineWidth = 0.8;
+    ctx.strokeRect(x - sw / 2 - 14, y - 12, 12, 12);
+    ctx.beginPath();
+    ctx.moveTo(x - sw / 2 - 14, y - 6);
+    ctx.lineTo(x - sw / 2 - 2, y - 6);
+    ctx.stroke();
+    // Fruit in crate
+    const fruitC = ['#FF7043','#FFEB3B','#66BB6A'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = fruitC[i];
+      ctx.beginPath(); ctx.arc(x - sw / 2 - 11 + i * 4, y - 14, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Colorful sign
+    ctx.fillStyle = '#FFF9C4';
+    ctx.fillRect(x - 28, y - 44, 56, 14);
+    ctx.strokeStyle = '#F9A825'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 28, y - 44, 56, 14);
+    ctx.fillStyle = '#BF360C';
+    ctx.font = 'bold 7px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('SHOP', x, y - bh + 3);
+    ctx.fillText('FRESH MARKET', x, y - 33);
 
-    // "OPEN" light
-    const lit = Math.sin(this.t * 2) > 0;
-    ctx.fillStyle = lit ? '#4CAF50' : '#1B5E20';
-    ctx.beginPath(); ctx.arc(x + bw / 2 - 8, y - bh + 6, 4, 0, Math.PI * 2); ctx.fill();
+    // Shop NPC (owner behind counter or sweeping outside)
+    if (this._shopOwnerState === 'sweeping') {
+      const npx = x + sw / 2 + 14 + Math.sin(this.t * 1.5) * 3;
+      this._drawShopNpc(npx, y, 'sweeping');
+    } else {
+      this._drawShopNpc(x + 10, y - 20, 'counter');
+    }
 
     // Label
     ctx.globalAlpha = 0.7;
@@ -855,6 +911,51 @@ export class WorldScene {
     ctx.font = '10px sans-serif';
     ctx.fillText('TAP TO ENTER', x, y + 6);
     ctx.globalAlpha = 1;
+  }
+
+  _drawShopNpc(x, y, state) {
+    const ctx = this.ctx;
+
+    if (state === 'sweeping') {
+      // Broom with animated sweep
+      const sweepOff = Math.sin(this.t * 3) * 4;
+      ctx.save();
+      ctx.translate(x + 3, y - 5);
+      ctx.strokeStyle = '#8B6340'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(sweepOff, 9); ctx.stroke();
+      ctx.fillStyle = '#D4A060';
+      ctx.beginPath();
+      ctx.moveTo(sweepOff - 5, 9);
+      ctx.lineTo(sweepOff + 5, 9);
+      ctx.lineTo(sweepOff + 3, 13);
+      ctx.lineTo(sweepOff - 3, 13);
+      ctx.closePath(); ctx.fill();
+      ctx.lineCap = 'butt';
+      ctx.restore();
+    }
+
+    // Body
+    ctx.fillStyle = '#1565C0';
+    ctx.fillRect(x - 4, y - 10, 8, 8);
+
+    // Head
+    ctx.fillStyle = '#FFCC80';
+    ctx.beginPath(); ctx.arc(x, y - 14, 5, 0, Math.PI * 2); ctx.fill();
+
+    // White hat (market owner)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x - 4, y - 21, 8, 4);
+    ctx.beginPath(); ctx.ellipse(x, y - 22, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.arc(x - 2, y - 15, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 2, y - 15, 0.9, 0, Math.PI * 2); ctx.fill();
+
+    // Smile
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 0.8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(x, y - 12, 2, 0.2, Math.PI - 0.2); ctx.stroke();
+    ctx.lineCap = 'butt';
   }
 
   _drawBoat() {
