@@ -9,6 +9,10 @@ export class Inventory {
 
     this.caughtFish = [];
     this.fishLog    = {};
+    this.aquarium   = [];
+    this.trophies   = [];
+
+    this.onSell = null;
 
     this.poles = [
       { id: 'old',    name: 'Old Rod',    power: 1, action: 'slow', owned: true },
@@ -117,9 +121,10 @@ export class Inventory {
     const avgW      = (fish.minWeight + fish.maxWeight) / 2;
     const starMult  = [0, 0.7, 1.0, 1.5][stars];
     const value     = Math.max(1, Math.round(fish.value * (weight / avgW) * starMult));
-    const entry     = { fishId: fish.id, name: fish.name, weight, value, stars, caughtAt: Date.now() };
+    const entry     = { fishId: fish.id, name: fish.name, weight, value, stars, rarity: fish.rarity, caughtAt: Date.now() };
 
     this.caughtFish.push(entry);
+    this._updateTrophies(entry);
 
     if (!this.fishLog[fish.id]) this.fishLog[fish.id] = { count: 0, bestWeight: 0 };
     this.fishLog[fish.id].count++;
@@ -129,19 +134,45 @@ export class Inventory {
     return entry;
   }
 
+  _updateTrophies(entry) {
+    this.trophies.push({ ...entry });
+    this.trophies.sort((a, b) => b.weight - a.weight);
+    if (this.trophies.length > 3) this.trophies = this.trophies.slice(0, 3);
+  }
+
+  addToAquarium(index) {
+    if (this.aquarium.length >= 8) return false;
+    const fish = this.caughtFish.splice(index, 1)[0];
+    if (!fish) return false;
+    this.aquarium.push(fish);
+    this.save();
+    return true;
+  }
+
+  removeFromAquarium(index) {
+    const fish = this.aquarium.splice(index, 1)[0];
+    if (!fish) return false;
+    this.caughtFish.push(fish);
+    this.save();
+    return true;
+  }
+
   sellFish(index) {
     const entry = this.caughtFish[index];
     if (!entry) return 0;
     this.money += entry.value;
     this.caughtFish.splice(index, 1);
+    this.onSell?.(1, entry.value);
     this.save();
     return entry.value;
   }
 
   sellAllFish() {
     const total = this.caughtFish.reduce((s, e) => s + e.value, 0);
+    const count = this.caughtFish.length;
     this.money += total;
     this.caughtFish = [];
+    this.onSell?.(count, total);
     this.save();
     return total;
   }
@@ -218,6 +249,8 @@ export class Inventory {
         hasSail:        this.hasSail,
         caughtFish:     this.caughtFish,
         fishLog:        this.fishLog,
+        aquarium:       this.aquarium,
+        trophies:       this.trophies,
         equippedPoleId: this.equippedPoleId,
         equippedBaitId: this.equippedBaitId,
         poleStates:     this.poles.map(p => ({ id: p.id, owned: p.owned })),
@@ -237,6 +270,8 @@ export class Inventory {
       this.hasSail        = d.hasSail        ?? false;
       this.caughtFish     = d.caughtFish     ?? [];
       this.fishLog        = d.fishLog        ?? {};
+      this.aquarium       = d.aquarium       ?? [];
+      this.trophies       = d.trophies       ?? [];
       this.equippedPoleId = d.equippedPoleId ?? 'old';
       this.equippedBaitId = d.equippedBaitId ?? 'worm';
 
