@@ -300,6 +300,41 @@
     .equip-btn-disabled { opacity: 0.4; cursor: not-allowed; }
     .equip-empty { opacity: 0.6; }
 
+    /* ── Sort bar ──────────────────────────────────────────── */
+    .sort-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .sort-bar > span { flex-shrink: 0; }
+    .sort-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text-dim);
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .sort-btn.sort-active {
+      background: rgba(255,160,0,0.18);
+      border-color: var(--gold);
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .sort-dir {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--gold);
+      min-width: 14px;
+      text-align: center;
+    }
+
     /* ── FishDex ───────────────────────────────────────────── */
     .dex-summary {
       display: flex;

@@ -57,6 +57,8 @@ export class InventoryPanel {
     this.activeSubTab    = 'fish';
     this.isOpen          = false;
     this._worldRef       = null;
+    this._fishSort       = { by: 'id', dir: 'asc' };
+    this._dexSort        = { by: 'id', dir: 'asc' };
 
     this.el = document.createElement('div');
     this.el.id = 'inventory-panel';
@@ -140,6 +142,32 @@ export class InventoryPanel {
     if (this.activeTab === 'fishdex')                                     el.innerHTML = this._renderDex();
     if (this.activeTab === 'goals')                                       el.innerHTML = this._renderGoals();
     if (this.activeTab === 'style')                                       el.innerHTML = this._renderStyle();
+
+    // Sort buttons (fish bag)
+    el.querySelectorAll('.sort-btn[data-fish-sort]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.fishSort;
+        if (this._fishSort.by === key) {
+          this._fishSort.dir = this._fishSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          this._fishSort = { by: key, dir: key === 'weight' ? 'desc' : 'asc' };
+        }
+        this._render();
+      });
+    });
+
+    // Sort buttons (fishdex)
+    el.querySelectorAll('.sort-btn[data-dex-sort]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.dexSort;
+        if (this._dexSort.by === key) {
+          this._dexSort.dir = this._dexSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          this._dexSort = { by: key, dir: key === 'weight' ? 'desc' : 'asc' };
+        }
+        this._render();
+      });
+    });
 
     // Claim challenge rewards
     el.querySelectorAll('.ch-claim-btn[data-claim-idx]').forEach(btn => {
@@ -340,18 +368,41 @@ export class InventoryPanel {
     return c.toDataURL();
   }
 
+  _sortBar(sortState, btnAttr, keys) {
+    const dir = sortState.dir === 'asc' ? '↑' : '↓';
+    const btns = keys.map(({ key, label }) =>
+      `<button class="sort-btn${sortState.by === key ? ' sort-active' : ''}" data-${btnAttr}="${key}">${label}</button>`
+    ).join('');
+    return `<div class="sort-bar"><span>Sort:</span>${btns}<span class="sort-dir">${dir}</span></div>`;
+  }
+
   _renderFish() {
     const { caughtFish } = this.inventory;
     if (!caughtFish.length) {
       return `<div class="empty-msg">No fish yet!<br><span>Go catch some 🎣</span></div>`;
     }
+
+    const { by, dir } = this._fishSort;
+    const sorted = [...caughtFish].sort((a, b) => {
+      let va, vb;
+      if (by === 'name')   { va = a.name.toLowerCase();  vb = b.name.toLowerCase(); }
+      else if (by === 'weight') { va = a.weight; vb = b.weight; }
+      else                 { va = a.fishId;    vb = b.fishId; }
+      if (va < vb) return dir === 'asc' ? -1 : 1;
+      if (va > vb) return dir === 'asc' ?  1 : -1;
+      return 0;
+    });
+
     const totalValue = caughtFish.reduce((s, f) => s + f.value, 0);
     let html = `<div class="fish-summary">
       ${caughtFish.length} fish &nbsp;·&nbsp; Bag value: <strong>$${totalValue}</strong>
       <span style="font-size:11px;color:var(--text-dim);margin-left:auto">Sell at Shop</span>
     </div>`;
+    html += this._sortBar(this._fishSort, 'fish-sort', [
+      { key: 'id', label: 'ID' }, { key: 'name', label: 'Name' }, { key: 'weight', label: 'Weight' },
+    ]);
 
-    caughtFish.forEach((entry) => {
+    sorted.forEach((entry) => {
       const fish    = this.fishDb.getById(entry.fishId);
       const rc      = this._rarityColor(fish?.rarity ?? 'common');
       const icon    = fish ? this._fishIcon(fish, true) : '';
@@ -474,7 +525,18 @@ export class InventoryPanel {
 
   _renderDex() {
     const allFish = this.fishDb.getAll();
-    const caught  = allFish.filter(f =>  this.inventory.hasCaught(f.id));
+    const caught  = allFish.filter(f => this.inventory.hasCaught(f.id));
+
+    const { by, dir } = this._dexSort;
+    const sorted = [...allFish].sort((a, b) => {
+      let va, vb;
+      if (by === 'name')        { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+      else if (by === 'weight') { va = this.inventory.bestWeight(a.id); vb = this.inventory.bestWeight(b.id); }
+      else                      { va = a.id; vb = b.id; }
+      if (va < vb) return dir === 'asc' ? -1 : 1;
+      if (va > vb) return dir === 'asc' ?  1 : -1;
+      return 0;
+    });
 
     let html = `<div class="dex-summary">
       <span class="dex-count">${caught.length} / ${allFish.length}</span>
@@ -482,9 +544,12 @@ export class InventoryPanel {
         <div class="dex-progress-fill" style="width:${(caught.length/allFish.length*100).toFixed(0)}%"></div>
       </div>
     </div>`;
+    html += this._sortBar(this._dexSort, 'dex-sort', [
+      { key: 'id', label: 'ID' }, { key: 'name', label: 'Name' }, { key: 'weight', label: 'Best Weight' },
+    ]);
 
     html += `<div class="dex-grid">`;
-    for (const fish of allFish) {
+    for (const fish of sorted) {
       const isCaught = this.inventory.hasCaught(fish.id);
       const rc = isCaught ? this._rarityColor(fish.rarity) : '#444';
       const icon = this._fishIcon(fish, isCaught);
