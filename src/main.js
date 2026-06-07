@@ -180,9 +180,12 @@ function loop(timestamp) {
   gameTime.update(dt);
   dialogPanel.update(dt);
 
-  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
-  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
-  if (activeScene === 'home'    && homeScene)    { homeScene.update(dt);    homeScene?.draw(); }
+  // Snapshot scene references before update — a scene's update() may trigger
+  // a transition that nulls out the global, so draw must use the snapshot.
+  const ws = worldScene, fs = fishingScene, hs = homeScene;
+  if      (activeScene === 'world'   && ws) { ws.update(dt); ws === worldScene   && ws.draw(); }
+  else if (activeScene === 'fishing' && fs) { fs.update(dt); fs === fishingScene && fs.draw(); }
+  else if (activeScene === 'home'    && hs) { hs.update(dt); hs === homeScene    && hs.draw(); }
 
   weatherSystem.update(dt);
   weatherSystem.draw(ctx, canvas.width, canvas.height);
