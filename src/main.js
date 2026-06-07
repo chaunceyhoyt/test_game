@@ -77,6 +77,7 @@ const settingsPanel = new SettingsPanel(settings, (key, value) => {
 
 const hud         = new HUD(inventory, gameTime, () => invPanel.toggle(), () => settingsPanel.open());
 const invPanel    = new InventoryPanel(inventory, fishDb, appearance, dailyChallenges);
+invPanel.setWorldRef(() => worldScene);
 const shopPanel   = new ShopPanel(inventory, fishDb);
 const dialogPanel = new DialogPanel();
 

@@ -441,7 +441,6 @@ export class WorldScene {
     ctx.restore();
 
     if (this.playerOnBoat) this._drawFuelHud(cw, ch);
-    this._drawMinimap(cw, ch);
     this._drawZoneLabel(cw, ch);
   }
 
@@ -804,28 +803,6 @@ export class WorldScene {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
     const motor = this.inventory?.getEquippedMotor?.();
     ctx.fillText(!motor ? '🚣 PADDLING' : (fuel<=0 && this.inventory?.hasSail) ? '⛵ SAILING' : `⛽ ${Math.ceil(fuel)}/${max}`, bx+bw/2, by-2);
-  }
-
-  _drawMinimap(cw, ch) {
-    const ctx = this.ctx, mw = 160, mh = 96, mx = cw-mw-10, my = ch-mh-10, sx = mw/WORLD_W, sy = mh/WORLD_H;
-    ctx.fillStyle = 'rgba(10,28,10,0.85)'; this._roundRect(mx-2, my-2, mw+4, mh+4, 5); ctx.fill();
-    ctx.fillStyle = '#3A7D44'; ctx.fillRect(mx, my + LAND_Y*sy, mw, (WORLD_H-LAND_Y)*sy);
-    ctx.globalAlpha = 0.85;
-    for (const z of ZONES) { ctx.fillStyle = z.water; ctx.fillRect(mx+z.x*sx, my+z.y*sy, z.w*sx, z.h*sy); }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#7D5A3C';
-    for (const d of DOCKS) ctx.fillRect(mx+d.x*sx, my+d.y*sy, Math.max(2, d.w*sx), Math.max(2, d.h*sy));
-    ctx.fillStyle = '#00E5FF';
-    for (const s of this.spots) { ctx.beginPath(); ctx.arc(mx+s.wx*sx, my+s.wy*sy, 2, 0, Math.PI*2); ctx.fill(); }
-    ctx.fillStyle = '#F2E0BC'; ctx.fillRect(mx+this.home.x*sx-2, my+this.home.y*sy-3, 5, 4);
-    ctx.fillStyle = '#D32F2F';  ctx.fillRect(mx+this.shop.x*sx-2, my+this.shop.y*sy-3, 5, 4);
-    ctx.fillStyle = this.appearance?.boatColor ?? '#6D4C2A';
-    ctx.beginPath(); ctx.arc(mx+this.boat.x*sx, my+this.boat.y*sy, 3, 0, Math.PI*2); ctx.fill();
-    const ref = this.playerOnBoat ? this.boat : this.player;
-    ctx.fillStyle = '#FFEB3B'; ctx.beginPath(); ctx.arc(mx+ref.x*sx, my+ref.y*sy, 3, 0, Math.PI*2); ctx.fill();
-    const vp = this._viewport();
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1;
-    ctx.strokeRect(mx+Math.max(0,vp.left)*sx, my+Math.max(0,vp.top)*sy, Math.min(WORLD_W,vp.right-vp.left)*sx, Math.min(WORLD_H,vp.bottom-vp.top)*sy);
   }
 
   _drawZoneLabel(cw, ch) {

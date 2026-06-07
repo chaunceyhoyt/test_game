@@ -1,3 +1,8 @@
+import {
+  WORLD_W, WORLD_H, LAND_Y,
+  ZONES, FISHING_SPOTS, DOCKS, BUILDINGS,
+} from '../systems/WorldMap.js';
+
 const FUR_COLORS = [
   { label: 'Sandy',    value: '#FFCC80' },
   { label: 'Cream',    value: '#FFEECB' },
@@ -51,6 +56,7 @@ export class InventoryPanel {
     this.activeTab       = 'inventory';
     this.activeSubTab    = 'fish';
     this.isOpen          = false;
+    this._worldRef       = null;
 
     this.el = document.createElement('div');
     this.el.id = 'inventory-panel';
@@ -87,6 +93,8 @@ export class InventoryPanel {
 
     this.el.querySelector('.panel-handle').addEventListener('click', () => this.close());
   }
+
+  setWorldRef(fn) { this._worldRef = fn; }
 
   open() {
     this.isOpen = true;
@@ -190,6 +198,9 @@ export class InventoryPanel {
 
     if (this.activeTab === 'style') {
       requestAnimationFrame(() => this._drawPreview());
+    }
+    if (this.activeTab === 'map') {
+      requestAnimationFrame(() => this._drawMap());
     }
   }
 
@@ -591,13 +602,115 @@ export class InventoryPanel {
 
   _renderMap() {
     return `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;
-                  gap:12px; padding:32px 20px; color:var(--text-dim); text-align:center;">
-        <div style="font-size:48px;">🗺️</div>
-        <div style="font-size:1rem; font-weight:700; color:var(--text);">Map</div>
-        <div style="font-size:0.85rem; font-style:italic;">Coming soon — full world map with fishing spots, boat location, and points of interest.</div>
+      <div style="padding:14px 14px 0;">
+        <canvas id="world-map-canvas"
+          style="display:block;width:100%;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#0a1a0a"></canvas>
+      </div>
+      <div style="padding:10px 16px 6px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);line-height:1.8">
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#FFEB3B;border:1.5px solid #fff"></span> You</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#8B6340;border:1.5px solid #fff"></span> Boat</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#00E5FF"></span> Fishing spot</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:7px;background:#F2E0BC;border-radius:2px"></span> Home</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:7px;background:#D32F2F;border-radius:2px"></span> Shop</span>
       </div>
     `;
+  }
+
+  _drawMap() {
+    const canvas = document.getElementById('world-map-canvas');
+    if (!canvas) return;
+
+    // Size canvas to fill its CSS width, maintaining 5:3 world aspect ratio
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const mw   = Math.floor(rect.width - 28);
+    const mh   = Math.floor(mw * (WORLD_H / WORLD_W));
+    canvas.width  = mw;
+    canvas.height = mh;
+
+    const ctx = canvas.getContext('2d');
+    const sx = mw / WORLD_W, sy = mh / WORLD_H;
+
+    ctx.clearRect(0, 0, mw, mh);
+
+    // Land
+    const lg = ctx.createLinearGradient(0, LAND_Y * sy, 0, mh);
+    lg.addColorStop(0, '#4CAF50'); lg.addColorStop(1, '#2E7D32');
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, LAND_Y * sy, mw, mh - LAND_Y * sy);
+
+    // Water zones
+    ctx.globalAlpha = 0.92;
+    for (const zone of ZONES) {
+      ctx.fillStyle = zone.water;
+      ctx.fillRect(zone.x * sx, zone.y * sy, zone.w * sx, zone.h * sy);
+    }
+    ctx.globalAlpha = 1;
+
+    // Shore strip
+    ctx.fillStyle = '#C8A87A';
+    ctx.fillRect(0, LAND_Y * sy - 1, mw, 2);
+
+    // Zone labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const zone of ZONES) {
+      const zw = zone.w * sx, zh = zone.h * sy;
+      if (zw < 24 || zh < 10) continue;
+      const cx = (zone.x + zone.w / 2) * sx, cy = (zone.y + zone.h / 2) * sy;
+      const fs = Math.max(6, Math.min(10, Math.floor(Math.min(zw / 8, zh / 3))));
+      ctx.font = `bold ${fs}px sans-serif`;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillText(zone.label, cx + 0.5, cy + 0.5);
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(zone.label, cx, cy);
+    }
+
+    // Docks
+    ctx.fillStyle = '#8B6340';
+    for (const d of DOCKS) {
+      ctx.fillRect(d.x * sx, d.y * sy, Math.max(2, d.w * sx), Math.max(2, d.h * sy));
+    }
+
+    // Fishing spots
+    for (const spot of FISHING_SPOTS) {
+      ctx.fillStyle = 'rgba(0,229,255,0.25)';
+      ctx.beginPath(); ctx.arc(spot.wx * sx, spot.wy * sy, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#00E5FF';
+      ctx.beginPath(); ctx.arc(spot.wx * sx, spot.wy * sy, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Home + shop buildings
+    ctx.fillStyle = '#F2E0BC';
+    ctx.fillRect(BUILDINGS.home.x * sx - 4, BUILDINGS.home.y * sy - 5, 8, 6);
+    ctx.strokeStyle = '#7B4A22'; ctx.lineWidth = 0.8; ctx.strokeRect(BUILDINGS.home.x * sx - 4, BUILDINGS.home.y * sy - 5, 8, 6);
+    ctx.fillStyle = '#D32F2F';
+    ctx.fillRect(BUILDINGS.shop.x * sx - 4, BUILDINGS.shop.y * sy - 5, 8, 6);
+    ctx.strokeStyle = '#7B1A1A'; ctx.strokeRect(BUILDINGS.shop.x * sx - 4, BUILDINGS.shop.y * sy - 5, 8, 6);
+
+    // Live player + boat from world scene
+    const ws = this._worldRef?.();
+    if (ws) {
+      const boatColor = ws.appearance?.boatColor ?? '#8B6340';
+      // Boat
+      ctx.fillStyle = boatColor;
+      ctx.beginPath(); ctx.arc(ws.boat.x * sx, ws.boat.y * sy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Player (separate dot when not on boat)
+      if (!ws.playerOnBoat) {
+        ctx.fillStyle = '#FFEB3B';
+        ctx.beginPath(); ctx.arc(ws.player.x * sx, ws.player.y * sy, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+      } else {
+        // When on boat, highlight the boat dot in yellow
+        ctx.fillStyle = '#FFEB3B';
+        ctx.beginPath(); ctx.arc(ws.boat.x * sx, ws.boat.y * sy, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+
+    ctx.textBaseline = 'alphabetic';
   }
 
   destroy() { this.el.remove(); }
