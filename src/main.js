@@ -180,9 +180,9 @@ function loop(timestamp) {
   gameTime.update(dt);
   dialogPanel.update(dt);
 
-  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene.draw(); }
-  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene.draw(); }
-  if (activeScene === 'home'    && homeScene)    { homeScene.update(dt);    homeScene.draw(); }
+  if (activeScene === 'world'   && worldScene)   { worldScene.update(dt);   worldScene?.draw(); }
+  if (activeScene === 'fishing' && fishingScene) { fishingScene.update(dt); fishingScene?.draw(); }
+  if (activeScene === 'home'    && homeScene)    { homeScene.update(dt);    homeScene?.draw(); }
 
   weatherSystem.update(dt);
   weatherSystem.draw(ctx, canvas.width, canvas.height);
