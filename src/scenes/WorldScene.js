@@ -200,7 +200,9 @@ export class WorldScene {
       }
       if (isDockAt(wx, wy) || wy >= LAND_Y) {
         const dp = this._nearestDockEdge(this.boat.x, this.boat.y);
-        this._boatTarget = { x: dp.x, y: dp.y, type: 'dock', landTarget: { x: dp.x, y: LAND_Y + 22 } };
+        // Target 5px inside the dock (guaranteed isDockAt=true, so boat can reach it).
+        // Land target is 5px past the dock onto walkable ground.
+        this._boatTarget = { x: dp.x, y: dp.y - 5, type: 'dock', landTarget: { x: dp.x, y: dp.y + 5 } };
         return;
       }
       if (isWaterAt(wx, wy)) this._boatTarget = { x: wx, y: wy, type: 'water' };
@@ -315,7 +317,10 @@ export class WorldScene {
     return true;
   }
 
-  _isBoatPassable(wx, wy) { return isWaterAt(wx, wy) && !isDockAt(wx, wy); }
+  _isBoatPassable(wx, wy) {
+    if (wy >= LAND_Y || wy < 0 || wx < 0 || wx >= WORLD_W) return false;
+    return isWaterAt(wx, wy) || isDockAt(wx, wy);
+  }
 
   // ── Update ─────────────────────────────────────────────────────────────────
 
