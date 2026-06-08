@@ -87,10 +87,14 @@ export class InventoryPanel {
       btn.addEventListener('click', () => this._switchSubTab(btn.dataset.subtab));
     });
 
-    let startY = 0;
-    this.el.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    let startY = 0, swipeFromHandle = false;
+    this.el.addEventListener('touchstart', e => {
+      startY = e.touches[0].clientY;
+      const content = document.getElementById('panel-content');
+      swipeFromHandle = !content?.contains(e.target);
+    }, { passive: true });
     this.el.addEventListener('touchend', e => {
-      if (e.changedTouches[0].clientY - startY > 60) this.close();
+      if (swipeFromHandle && e.changedTouches[0].clientY - startY > 60) this.close();
     }, { passive: true });
 
     this.el.querySelector('.panel-handle').addEventListener('click', () => this.close());
