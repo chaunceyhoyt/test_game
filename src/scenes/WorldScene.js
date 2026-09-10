@@ -4,6 +4,7 @@ import {
   PLAYER_START, BOAT_START,
   getZoneAt, isWaterAt, isDockAt,
 } from '../systems/WorldMap.js';
+import { PlayerSprite } from '../systems/PlayerSprite.js';
 
 const FUEL_DRAIN = 0.5;
 const MIN_ZOOM   = 0.25;
@@ -50,6 +51,18 @@ export class WorldScene {
     this._currentZone    = null;
     this._zoneLabel      = null;
     this._zoneLabelTimer = 0;
+
+    // Sprite animation
+    this._playerDir    = 'down';
+    this._animFrame    = 1;
+    this._animTimer    = 0;
+    this._walkCycle    = [0, 1, 2, 1];
+    this._walkCycleIdx = 0;
+    this._sprite = new PlayerSprite({
+      fur:   appearance?.furColor   ?? '#FFCC80',
+      shirt: appearance?.shirtColor ?? '#E05C3A',
+      pants: appearance?.pantsColor ?? '#4A6741',
+    });
 
     this.spots = FISHING_SPOTS.map(s => ({ ...s, location: s.zone }));
     this.home  = BUILDINGS.home;
@@ -378,8 +391,22 @@ export class WorldScene {
       else if (this._isWalkable(p.x, ny)) { p.y = ny; }
       if (Math.random() < 0.3)
         this.walkParticles.push({ x: p.x, y: p.y + 8, vx: (Math.random()-0.5)*20, vy: -10, life: 0.4 });
+
+      // Update facing direction
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      if (adx > ady) this._playerDir = dx > 0 ? 'right' : 'left';
+      else           this._playerDir = dy > 0 ? 'down'  : 'up';
+
+      // Advance walk animation
+      this._animTimer += dt;
+      if (this._animTimer >= 0.14) {
+        this._animTimer = 0;
+        this._walkCycleIdx = (this._walkCycleIdx + 1) % this._walkCycle.length;
+        this._animFrame = this._walkCycle[this._walkCycleIdx];
+      }
     } else {
       p.x = p.tx; p.y = p.ty;
+      this._animFrame = 1;
       if (p._path.length > 0 && p._pathIdx < p._path.length - 1) {
         p._pathIdx++; p.tx = p._path[p._pathIdx].x; p.ty = p._path[p._pathIdx].y;
       } else if (p.state === 'walking') {
@@ -760,40 +787,8 @@ export class WorldScene {
   }
 
   _drawPlayer() {
-    const ctx = this.ctx, { x, y, state } = this.player;
-    const bounce = state === 'walking' ? Math.sin(this.t*8)*2 : 0, py = y + bounce;
-    const fur = this.appearance?.furColor ?? '#FFCC80', shirt = this.appearance?.shirtColor ?? '#1976D2', pants = this.appearance?.pantsColor ?? '#37474F';
-
-    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(x, y+14, 10, 4, 0, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = fur; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x-5, py+5); ctx.quadraticCurveTo(x-20, py-2, x-18, py-12); ctx.stroke();
-    ctx.lineCap = 'butt';
-    ctx.fillStyle = pants; ctx.fillRect(Math.round(x)-6, Math.round(py)+6, 5, 8); ctx.fillRect(Math.round(x)+1, Math.round(py)+6, 5, 8);
-    ctx.fillStyle = shirt; ctx.fillRect(Math.round(x)-7, Math.round(py)-3, 14, 10);
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.moveTo(x-7,py-13); ctx.lineTo(x-4,py-22); ctx.lineTo(x-1,py-13); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x+1,py-13); ctx.lineTo(x+4,py-22); ctx.lineTo(x+7,py-13); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#FF8FAB';
-    ctx.beginPath(); ctx.moveTo(x-6,py-14); ctx.lineTo(x-4,py-20); ctx.lineTo(x-2,py-14); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(x+2,py-14); ctx.lineTo(x+4,py-20); ctx.lineTo(x+6,py-14); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = fur; ctx.beginPath(); ctx.arc(x, py-9, 8, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#2d2d2d';
-    ctx.beginPath(); ctx.ellipse(x-3, py-11, 2, 1.5, -0.25, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(x+3, py-11, 2, 1.5,  0.25, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.beginPath(); ctx.arc(x-2.2, py-11.5, 0.8, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x+3.8, py-11.5, 0.8, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#FF8FAB'; ctx.beginPath(); ctx.arc(x, py-7.5, 1.2, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(80,40,0,0.35)';
-    for (let i = 0; i < 3; i++) {
-      ctx.beginPath(); ctx.arc(x-5-i*1.8, py-7.5, 0.8, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x+5+i*1.8, py-7.5, 0.8, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(x+6, py-2); ctx.lineTo(x+18, py-18); ctx.stroke();
-    ctx.strokeStyle = 'rgba(200,200,255,0.5)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x+18, py-18); ctx.lineTo(x+22, py-10); ctx.stroke();
-    ctx.lineCap = 'butt';
+    const { x, y } = this.player;
+    this._sprite.draw(this.ctx, x, y, this._playerDir, this._animFrame);
   }
 
   // ── Screen-space overlays ──────────────────────────────────────────────────

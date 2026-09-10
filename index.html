@@ -10,6 +10,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Fish Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
   <style>
     /* ── Reset & Root ──────────────────────────────────────── */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +32,7 @@
 
     body {
       background: var(--bg);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: var(--text);
       overflow: hidden;
       width: 100vw;
@@ -133,15 +136,15 @@
       bottom: 0; left: 0; right: 0;
       height: 100vh;
       height: 100dvh;
-      border-radius: 0;
+      border-radius: 22px 22px 0 0;
       transform: translateY(100%);
       transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
       z-index: 200;
       display: flex;
       flex-direction: column;
-      /* Wood/parchment theme */
-      background: linear-gradient(160deg, #F6EAD0 0%, #EDD9A0 55%, #E2CC84 100%);
-      border-top: 3px solid #7B4A22;
+      /* Felt/parchment theme */
+      background: linear-gradient(160deg, #F7EDD5 0%, #EDD9A3 55%, #E4CF88 100%);
+      border-top: 4px solid #8B5A22;
       box-shadow: 0 -8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,140,0.4);
       /* Re-scope CSS vars for all children */
       color: #2A1000;
@@ -152,42 +155,59 @@
       --text:     #2A1000;
       --text-dim: rgba(42,16,0,0.55);
       --border:   rgba(90,50,20,0.22);
+      font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
     }
     #inventory-panel.open { transform: translateY(0); }
 
+    /* Stitched border effect */
+    #inventory-panel::before {
+      content: '';
+      position: absolute;
+      inset: 10px 8px 0;
+      border: 2px dashed rgba(139, 90, 34, 0.28);
+      border-radius: 16px 16px 0 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    #inventory-panel > * { position: relative; z-index: 1; }
+
     .panel-handle {
-      width: 38px; height: 4px;
-      background: rgba(90,50,20,0.28);
-      border-radius: 2px;
-      margin: 10px auto 0;
+      width: 44px; height: 5px;
+      background: rgba(90,50,20,0.32);
+      border-radius: 3px;
+      margin: 13px auto 0;
       cursor: pointer;
     }
 
     .panel-tabs {
       display: flex;
-      padding: 6px 12px 0;
-      gap: 4px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(139,90,43,0.07);
+      padding: 8px 10px 0;
+      gap: 5px;
+      border-bottom: 2px solid rgba(139,90,34,0.2);
+      background: rgba(139,90,43,0.06);
     }
 
     .tab-btn {
       flex: 1;
-      padding: 10px 4px;
-      border: none;
-      background: none;
+      padding: 8px 2px;
+      border: 2px solid transparent;
+      background: rgba(255,245,220,0.4);
       color: var(--text-dim);
-      font-size: 12px;
-      font-weight: 700;
-      border-bottom: 2.5px solid transparent;
+      font-size: 11px;
+      font-weight: 800;
+      font-family: 'Nunito', inherit;
+      border-radius: 10px 10px 0 0;
       cursor: pointer;
       transition: all 0.18s;
-      letter-spacing: 0.3px;
-      margin-bottom: -1px;
+      letter-spacing: 0.2px;
+      margin-bottom: -2px;
     }
     .tab-btn.active {
       color: var(--accent);
-      border-bottom-color: var(--accent);
+      background: rgba(255,248,224,0.85);
+      border-color: rgba(139,90,34,0.25);
+      border-bottom-color: rgba(255,248,224,0.85);
+      box-shadow: 0 -2px 6px rgba(139,90,34,0.12);
     }
 
     .panel-content {
@@ -229,10 +249,11 @@
       align-items: center;
       gap: 12px;
       padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(255,248,220,0.65);
+      border-radius: 16px;
+      background: rgba(255,250,228,0.8);
       margin-bottom: 8px;
-      border: 1px solid var(--border);
+      border: 2px solid rgba(139,90,34,0.18);
+      box-shadow: 0 3px 0 rgba(139,90,34,0.12);
     }
 
     .fish-icon-img {
@@ -313,19 +334,25 @@
     }
     .sort-bar > span { flex-shrink: 0; }
     .sort-btn {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,245,220,0.5);
+      border: 1.5px solid rgba(90,50,20,0.2);
       color: var(--text-dim);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 3px 10px;
       font-size: 11px;
+      font-weight: 700;
+      font-family: 'Nunito', inherit;
       cursor: pointer;
+      box-shadow: 0 2px 0 rgba(90,50,20,0.15);
+      transition: transform 0.1s, box-shadow 0.1s;
     }
+    .sort-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(90,50,20,0.1); }
     .sort-btn.sort-active {
-      background: rgba(255,160,0,0.18);
+      background: rgba(139,90,32,0.18);
       border-color: var(--gold);
       color: var(--gold);
-      font-weight: 700;
+      font-weight: 800;
+      box-shadow: 0 2px 0 rgba(90,50,0,0.2);
     }
     .sort-dir {
       margin-left: auto;
